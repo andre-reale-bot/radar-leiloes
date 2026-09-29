@@ -77,6 +77,7 @@ async def captura(browser, url, sem):
             info["url_final"] = page.url
             info["titulo"] = await page.title()
             html = await page.content()
+            html = re.sub(r"[A-Za-z0-9+/=_\-]{40,}", "[REMOVIDO]", html)
             (d / "pagina.html").write_text(html[:3_000_000], encoding="utf-8")
             try:
                 texto = await page.inner_text("body")
@@ -88,7 +89,8 @@ async def captura(browser, url, sem):
             info["erro"] = repr(e)[:500]
         await page.wait_for_timeout(500)
         info["apis_capturadas"] = len(apis)
-        (d / "apis.json").write_text(json.dumps(apis, ensure_ascii=False, indent=1), encoding="utf-8")
+        txt_apis = re.sub(r"[A-Za-z0-9+/=_\-]{40,}", "[REMOVIDO]", json.dumps(apis, ensure_ascii=False, indent=1))
+        (d / "apis.json").write_text(txt_apis, encoding="utf-8")
         (d / "info.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
         await ctx.close()
         print(info)
