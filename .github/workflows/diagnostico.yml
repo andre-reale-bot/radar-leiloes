@@ -1,0 +1,27 @@
+name: Diagnostico das fontes
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar navegador
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Visitar fontes
+        run: python diagnostico.py
+      - name: Salvar resultados
+        run: |
+          git config user.name "radar-bot"
+          git config user.email "radar-bot@users.noreply.github.com"
+          git add snapshots
+          git commit -m "Diagnostico $(date -u +%F)" || echo "sem mudancas"
+          git push
