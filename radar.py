@@ -490,7 +490,9 @@ def gera_pagina(eventos, status, n_fenaju, info_dist=""):
         selo = "&#10004;" if e["ver"] == "ok" else "&#9888;"
         d = datetime.date.fromisoformat(e["data"])
         dia = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"][d.weekday()]
-        return (f'<tr class="{cls}" data-uf="{e["uf"]}"><td>{d.strftime("%d/%m")} {dia}<br><small>{e["hora"]}</small></td>'
+        km = e["km"] if e.get("km") is not None else 999999  # sem distancia vai para o fim
+        dt = e["data"] + " " + (e["hora"] or "00:00")
+        return (f'<tr class="{cls}" data-uf="{e["uf"]}" data-km="{km}" data-dt="{dt}"><td>{d.strftime("%d/%m")} {dia}<br><small>{e["hora"]}</small></td>'
                 f'<td><b>{e["uf"] or "?"}</b></td><td>{html.escape(e["cidade"])}</td>'
                 f'<td>{dist(e)}</td>'
                 f'<td>{html.escape(e["nome"])}<br><small>{html.escape(e["obs"])}</small></td>'
@@ -500,8 +502,10 @@ def gera_pagina(eventos, status, n_fenaju, info_dist=""):
     opcoes = "".join(f'<option value="{u}">{u}</option>' for u in ufs)
     fontes = "".join(f'<li>{html.escape(n)}: {"OK" if not s["erro"] else "FALHOU"} ({s["qtd"]} leiloes){" - " + html.escape(s["erro"][:80]) if s["erro"] else ""}</li>'
                      for n, s in status.items())
-    mg = [e for e in eventos if e["uf"] == "MG"]
-    resto = [e for e in eventos if e["uf"] != "MG"]
+    n_mg = sum(1 for e in eventos if e["uf"] == "MG")
+    # Ordem padrao: mais perto de BH primeiro; sem distancia no fim; empate por data
+    por_dist = sorted(eventos, key=lambda e: (e["km"] if e.get("km") is not None else 999999,
+                                              e["data"], e["hora"]))
     agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
     tipo = {"schedule": "execucao automatica", "workflow_dispatch": "execucao manual"}.get(
         os.environ.get("GITHUB_EVENT_NAME", ""), "execucao fora do GitHub")
@@ -514,22 +518,31 @@ table{{border-collapse:collapse;width:100%;background:#fff;font-size:14px}}
 td,th{{border-bottom:1px solid #e3e6eb;padding:6px;text-align:left;vertical-align:top}}
 th{{background:#1d2330;color:#fff;position:sticky;top:0}} tr.mg td{{background:#fff7d6}}
 small{{color:#5b6475}} .ok{{color:#11773a}} .alerta{{color:#b54708;font-weight:600}}
-.wrap{{overflow-x:auto}} select{{font-size:15px;padding:4px}}
+.wrap{{overflow-x:auto}} select,button{{font-size:15px;padding:4px 8px}}
+button.on{{background:#1d2330;color:#fff}}
 </style></head><body>
 <h1>Radar de Leiloes de Veiculos</h1>
 <div><small>Atualizado em {agora.strftime("%d/%m/%Y %H:%M")} (Brasilia, {tipo}) &middot; {HOJE.strftime("%d/%m")} a {LIMITE.strftime("%d/%m")} &middot;
 {len(eventos)} leiloes &middot; base FENAJU: {n_fenaju} leiloeiros</small></div>
-<p>Filtrar UF: <select id="f"><option value="">Todas</option>{opcoes}</select></p>
-<h2>Minas Gerais ({len(mg)})</h2><div class="wrap"><table><tr><th>Data</th><th>UF</th><th>Local</th><th>De BH (carro)</th><th>Leilao</th><th>Site oficial</th></tr>
-{"".join(linha(e) for e in mg) or '<tr><td colspan=6>Nenhum</td></tr>'}</table></div>
-<h2>Demais estados ({len(resto)})</h2><div class="wrap"><table id="t"><tr><th>Data</th><th>UF</th><th>Local</th><th>De BH (carro)</th><th>Leilao</th><th>Site oficial</th></tr>
-{"".join(linha(e) for e in resto)}</table></div>
+<p>Filtrar UF: <select id="f"><option value="">Todas</option>{opcoes}</select>
+&nbsp; Ordenar: <button id="bk" class="on">Por distancia</button> <button id="bd">Por data</button></p>
+<h2>Leiloes ({len(eventos)}) &middot; <span style="background:#fff7d6;padding:0 4px">Minas Gerais em amarelo ({n_mg})</span></h2>
+<div class="wrap"><table><thead><tr><th>Data</th><th>UF</th><th>Local</th><th>De BH (carro)</th><th>Leilao</th><th>Site oficial</th></tr></thead>
+<tbody id="t">{"".join(linha(e) for e in por_dist) or '<tr><td colspan=6>Nenhum</td></tr>'}</tbody></table></div>
 <h2>Fontes consultadas</h2><ul>{fontes}</ul>
 <p><small>&#10004; = site conferido (FENAJU, orgao publico ou organizadora conhecida). &#9888; = nao conferido: valide na FENAJU antes de qualquer pagamento. Nunca pague via Pix para pessoa fisica.</small></p>
 <p><small>De BH (carro): distancia e tempo de carro a partir de Belo Horizonte ate a sede do municipio, calculados pelo OpenStreetMap (OSRM), com tempo acrescido de 10%. Sem transito. ? = cidade nao identificada. {html.escape(info_dist)}.</small></p>
 <script>
 document.getElementById('f').onchange=function(e){{var v=e.target.value;
 document.querySelectorAll('tr[data-uf]').forEach(function(r){{r.style.display=(!v||r.dataset.uf===v)?'':'none'}})}};
+function ordena(porKm){{var t=document.getElementById('t');
+var rs=Array.prototype.slice.call(t.querySelectorAll('tr[data-uf]'));
+rs.sort(function(a,b){{var ka=+a.dataset.km,kb=+b.dataset.km,da=a.dataset.dt,db=b.dataset.dt;
+if(porKm){{return (ka-kb)||(da<db?-1:da>db?1:0)}}return (da<db?-1:da>db?1:0)||(ka-kb)}});
+rs.forEach(function(r){{t.appendChild(r)}});
+document.getElementById('bk').className=porKm?'on':'';document.getElementById('bd').className=porKm?'':'on'}}
+document.getElementById('bk').onclick=function(){{ordena(true)}};
+document.getElementById('bd').onclick=function(){{ordena(false)}};
 </script></body></html>"""
 
 
