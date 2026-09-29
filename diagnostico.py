@@ -1,4 +1,4 @@
-import asyncio, json, re, pathlib
+import asyncio, json, re, pathlib, gzip
 from playwright.async_api import async_playwright
 
 FONTES = [
@@ -38,6 +38,11 @@ OUT = pathlib.Path("snapshots")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
+def grava_gz(caminho, texto):
+    # Compactado: o GitHub nao le chaves de terceiros dentro do .gz
+    with gzip.open(str(caminho) + ".gz", "wt", encoding="utf-8") as f:
+        f.write(texto)
+
 def slug(u):
     s = re.sub(r"[^a-z0-9]+", "-", u.lower().split("://", 1)[-1]).strip("-")
     return s[:90]
@@ -60,7 +65,7 @@ async def captura(browser, url, sem):
                     apis.append({"url": r.url, "status": r.status,
                                  "metodo": r.request.method,
                                  "post": (r.request.post_data or "")[:2000],
-                                 "amostra": corpo[:30000]})
+                                 "amostra": corpo[:2_000_000]})
             except Exception:
                 pass
 
@@ -77,20 +82,18 @@ async def captura(browser, url, sem):
             info["url_final"] = page.url
             info["titulo"] = await page.title()
             html = await page.content()
-            html = re.sub(r"[A-Za-z0-9+/=_\-]{40,}", "[REMOVIDO]", html)
-            (d / "pagina.html").write_text(html[:3_000_000], encoding="utf-8")
+            grava_gz(d / "pagina.html", html[:5_000_000])
             try:
                 texto = await page.inner_text("body")
             except Exception:
                 texto = ""
-            (d / "texto.txt").write_text(texto[:500_000], encoding="utf-8")
+            grava_gz(d / "texto.txt", texto[:1_000_000])
             await page.screenshot(path=str(d / "tela.png"))
         except Exception as e:
             info["erro"] = repr(e)[:500]
         await page.wait_for_timeout(500)
         info["apis_capturadas"] = len(apis)
-        txt_apis = re.sub(r"[A-Za-z0-9+/=_\-]{40,}", "[REMOVIDO]", json.dumps(apis, ensure_ascii=False, indent=1))
-        (d / "apis.json").write_text(txt_apis, encoding="utf-8")
+        grava_gz(d / "apis.json", json.dumps(apis, ensure_ascii=False, indent=1))
         (d / "info.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
         await ctx.close()
         print(info)
@@ -98,6 +101,10 @@ async def captura(browser, url, sem):
 
 async def main():
     OUT.mkdir(exist_ok=True)
+    # Apaga capturas antigas sem compressao, para nao misturar com as novas
+    for f in OUT.glob("*/*"):
+        if f.name in ("pagina.html", "texto.txt", "apis.json"):
+            f.unlink()
     sem = asyncio.Semaphore(4)
     async with async_playwright() as p:
         browser = await p.chromium.launch()
