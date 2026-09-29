@@ -1,9 +1,0 @@
-Falha ao verificar seu navegador
-
-Código 21
-
-Ponto de verificação de segurança da Vercel
-
-|
-
-sfo1::1790694038-ug2qWhwfXkQdHJksEwLBBfRrp6aaNdGc

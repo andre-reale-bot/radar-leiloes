@@ -102,7 +102,7 @@
   "status": 200,
   "url_final": "https://leilo.com.br/agenda",
   "titulo": "Agenda de Leilões — Datas, Horários e Locais | Leilo",
-  "apis_capturadas": 15
+  "apis_capturadas": 13
  },
  {
   "url": "https://www.freitasleiloeiro.com.br/Leiloes/Agenda",
@@ -151,7 +151,7 @@
   "status": 200,
   "url_final": "https://www.superbid.net/",
   "titulo": "Superbid Exchange - Leilões Online de Veículos, Máquinas e Equipamentos",
-  "apis_capturadas": 41
+  "apis_capturadas": 42
  },
  {
   "url": "https://www.mgl.com.br/agenda/",

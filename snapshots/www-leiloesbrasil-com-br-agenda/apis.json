@@ -1,9 +1,0 @@
-[
- {
-  "url": "https://ep1.adtrafficquality.google/getconfig/sodar?sv=200&tid=gda&tv=r20260928&st=env&sjk=3642655929316631",
-  "status": 200,
-  "metodo": "GET",
-  "post": "",
-  "amostra": "{\"sodar_query_id\":\"oNK7apyGBsKtur8Pj7XFsQY\",\"injector_basename\":\"sodar2\",\"bg_hash_basename\":\"[REMOVIDO]\",\"bg_binary\":\"[REMOVIDO]\",\"rc_enable\":\"y\",\"bg_snapshot_delay_ms\":\"500\",\"is_gen_204\":\"0\"}"
- }
-]

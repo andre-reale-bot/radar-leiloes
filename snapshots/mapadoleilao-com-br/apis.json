@@ -1,9 +1,0 @@
-[
- {
-  "url": "https://mapadoleilao.com.[REMOVIDO].json",
-  "status": 200,
-  "metodo": "GET",
-  "post": "",
-  "amostra": "{\"id\":\"ef42a800-e559-434b-aba5-7801de5e9add\",\"timestamp\":1790622865467,\"matcher\":{\"static\":{\"/todos-leiloes\":{\"redirect\":\"/leiloes\"},\"/sitemap.xml\":{\"redirect\":\"/sitemap_index.xml\"}},\"wildcard\":{},\"dynamic\":{}},\"prerendered\":[]}"
- }
-]

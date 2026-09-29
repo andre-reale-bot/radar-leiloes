@@ -1,8 +1,0 @@
-www.joaoemilio.com.br
-Executando verificação de segurança
-
-Este site utiliza um serviço de segurança para proteção contra bots maliciosos. Esta página é exibida enquanto o site verifica se você não é um bot.
-
-Ray ID: a42bdcab9f2926c3
-Desempenho e segurança da Cloudflare
-Privacidade
