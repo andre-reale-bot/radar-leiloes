@@ -1,5 +1,5 @@
 """Radar de Leiloes de Veiculos - coleta diaria e gera pagina com os proximos 15 dias."""
-import asyncio, json, re, pathlib, datetime, html, unicodedata
+import asyncio, json, re, pathlib, datetime, html, unicodedata, os, csv, io, time, urllib.request
 from urllib.parse import urlparse
 
 HOJE = datetime.date.today()
@@ -378,9 +378,113 @@ def verifica(link, dominios):
         return "ok", "Dominio .leilao.br/.lel.br (restrito a leiloeiros)"
     return "alerta", "Nao verificado: confira na FENAJU antes de pagar"
 
+# ---------------------------------------------------------------- distancias
+
+MUNICIPIOS_URL = "https://raw.githubusercontent.com/kelvins/municipios-brasileiros/main/csv/municipios.csv"
+ESTADOS_URL = "https://raw.githubusercontent.com/kelvins/municipios-brasileiros/main/csv/estados.csv"
+OSRM_URL = "https://router.project-osrm.org/table/v1/driving/"
+FATOR_TEMPO = 1.10  # pedido do usuario: tempo do OpenStreetMap + 10%
+ORIGEM = ("BELO HORIZONTE", "MG")
+
+
+def nome_cidade(s):
+    """Normaliza nome de cidade para comparacao (sem acento, sem pontuacao)."""
+    t = sem_acento(s).replace("'", "")
+    t = re.sub(r"[^A-Z ]", " ", t)
+    return " ".join(t.split())
+
+
+def baixa_texto(url, timeout=60):
+    req = urllib.request.Request(url, headers={"User-Agent": "radar-leiloes (github.com/andre-reale-bot)"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read().decode("utf-8-sig")
+
+
+def carrega_municipios():
+    """Coordenadas das sedes dos municipios (base IBGE compilada no GitHub kelvins)."""
+    ufs = {row["codigo_uf"]: row["uf"] for row in csv.DictReader(io.StringIO(baixa_texto(ESTADOS_URL)))}
+    por_uf, por_nome = {}, {}
+    for row in csv.DictReader(io.StringIO(baixa_texto(MUNICIPIOS_URL))):
+        uf = ufs.get(row["codigo_uf"], "")
+        n = nome_cidade(row["nome"])
+        coord = (float(row["longitude"]), float(row["latitude"]))
+        por_uf[(n, uf)] = coord
+        por_nome.setdefault(n, []).append((uf, coord))
+    return por_uf, por_nome
+
+
+def acha_coord(e, por_uf, por_nome):
+    n = nome_cidade(e["cidade"])
+    if (n, e["uf"]) not in por_uf:
+        n = re.sub(r" (%s)$" % "|".join(UFS), "", n)  # tira UF colada no fim ("BETIM MG")
+        n = re.sub(r"^(LEILAO |PATIO )+", "", n)  # "PATIO FORTALEZA" -> "FORTALEZA"
+    if not n:
+        return None, ""
+    if e["uf"] and (n, e["uf"]) in por_uf:
+        return por_uf[(n, e["uf"])], e["uf"]
+    if not e["uf"] and len(por_nome.get(n, [])) == 1:  # nome unico no Brasil
+        uf, c = por_nome[n][0]
+        return c, uf
+    return None, ""
+
+
+def formata_tempo(seg):
+    m = int(round(seg * FATOR_TEMPO / 60))
+    if m < 60:
+        return f"{m} min"
+    return f"{m // 60}h{m % 60:02d}"
+
+
+def calcula_distancias(eventos):
+    """Distancia e tempo de carro de BH ate a cidade de cada leilao (OpenStreetMap/OSRM)."""
+    for e in eventos:
+        e["km"], e["tempo"] = None, ""
+    try:
+        por_uf, por_nome = carrega_municipios()
+    except Exception as ex:
+        print("Municipios falhou:", ex)
+        return "base de municipios indisponivel"
+    origem = por_uf.get(ORIGEM)
+    if not origem:
+        return "origem (BH) nao encontrada na base"
+    destinos = {}
+    for e in eventos:
+        c, _ = acha_coord(e, por_uf, por_nome)
+        if c:
+            destinos.setdefault(c, []).append(e)
+    lista = list(destinos)
+    falhas = 0
+    for i in range(0, len(lista), 80):
+        lote = lista[i:i + 80]
+        coords = ";".join(f"{lon:.5f},{lat:.5f}" for lon, lat in [origem] + lote)
+        try:
+            d = json.loads(baixa_texto(OSRM_URL + coords + "?sources=0&annotations=duration,distance"))
+            if d.get("code") != "Ok":
+                raise ValueError(d.get("code"))
+            for j, c in enumerate(lote, start=1):
+                dist, dur = d["distances"][0][j], d["durations"][0][j]
+                if dist is None or dur is None:
+                    continue
+                for e in destinos[c]:
+                    e["km"], e["tempo"] = int(round(dist / 1000)), formata_tempo(dur)
+        except Exception as ex:
+            falhas += 1
+            print("OSRM falhou:", ex)
+        time.sleep(1.2)
+    com = sum(1 for e in eventos if e["km"] is not None)
+    print("Distancias:", com, "de", len(eventos), "leiloes")
+    return f"{com} de {len(eventos)} leiloes com distancia" + (" (OSRM falhou em parte)" if falhas else "")
+
 # ---------------------------------------------------------------- pagina
 
-def gera_pagina(eventos, status, n_fenaju):
+def gera_pagina(eventos, status, n_fenaju, info_dist=""):
+    def dist(e):
+        if e.get("km") is None:
+            return "<small>Online</small>" if nome_cidade(e["cidade"]) == "ONLINE" else "<small>?</small>"
+        if e["km"] == 0:
+            return "Em BH"
+        return f'{e["km"]} km<br><small>{e["tempo"]}</small>'
+
     def linha(e):
         cls = "mg" if e["uf"] == "MG" else ""
         selo = "&#10004;" if e["ver"] == "ok" else "&#9888;"
@@ -388,6 +492,7 @@ def gera_pagina(eventos, status, n_fenaju):
         dia = ["seg", "ter", "qua", "qui", "sex", "sab", "dom"][d.weekday()]
         return (f'<tr class="{cls}" data-uf="{e["uf"]}"><td>{d.strftime("%d/%m")} {dia}<br><small>{e["hora"]}</small></td>'
                 f'<td><b>{e["uf"] or "?"}</b></td><td>{html.escape(e["cidade"])}</td>'
+                f'<td>{dist(e)}</td>'
                 f'<td>{html.escape(e["nome"])}<br><small>{html.escape(e["obs"])}</small></td>'
                 f'<td><a href="{html.escape(e["link"])}" target="_blank" rel="noopener">{html.escape(host(e["link"]))}</a>'
                 f'<br><small class="{e["ver"]}">{selo} {html.escape(e["ver_txt"])}</small></td></tr>')
@@ -398,6 +503,8 @@ def gera_pagina(eventos, status, n_fenaju):
     mg = [e for e in eventos if e["uf"] == "MG"]
     resto = [e for e in eventos if e["uf"] != "MG"]
     agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
+    tipo = {"schedule": "execucao automatica", "workflow_dispatch": "execucao manual"}.get(
+        os.environ.get("GITHUB_EVENT_NAME", ""), "execucao fora do GitHub")
     return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Radar de Leiloes</title>
 <style>
@@ -410,15 +517,16 @@ small{{color:#5b6475}} .ok{{color:#11773a}} .alerta{{color:#b54708;font-weight:6
 .wrap{{overflow-x:auto}} select{{font-size:15px;padding:4px}}
 </style></head><body>
 <h1>Radar de Leiloes de Veiculos</h1>
-<div><small>Atualizado em {agora.strftime("%d/%m/%Y %H:%M")} (Brasilia) &middot; {HOJE.strftime("%d/%m")} a {LIMITE.strftime("%d/%m")} &middot;
+<div><small>Atualizado em {agora.strftime("%d/%m/%Y %H:%M")} (Brasilia, {tipo}) &middot; {HOJE.strftime("%d/%m")} a {LIMITE.strftime("%d/%m")} &middot;
 {len(eventos)} leiloes &middot; base FENAJU: {n_fenaju} leiloeiros</small></div>
 <p>Filtrar UF: <select id="f"><option value="">Todas</option>{opcoes}</select></p>
-<h2>Minas Gerais ({len(mg)})</h2><div class="wrap"><table><tr><th>Data</th><th>UF</th><th>Local</th><th>Leilao</th><th>Site oficial</th></tr>
-{"".join(linha(e) for e in mg) or '<tr><td colspan=5>Nenhum</td></tr>'}</table></div>
-<h2>Demais estados ({len(resto)})</h2><div class="wrap"><table id="t"><tr><th>Data</th><th>UF</th><th>Local</th><th>Leilao</th><th>Site oficial</th></tr>
+<h2>Minas Gerais ({len(mg)})</h2><div class="wrap"><table><tr><th>Data</th><th>UF</th><th>Local</th><th>De BH (carro)</th><th>Leilao</th><th>Site oficial</th></tr>
+{"".join(linha(e) for e in mg) or '<tr><td colspan=6>Nenhum</td></tr>'}</table></div>
+<h2>Demais estados ({len(resto)})</h2><div class="wrap"><table id="t"><tr><th>Data</th><th>UF</th><th>Local</th><th>De BH (carro)</th><th>Leilao</th><th>Site oficial</th></tr>
 {"".join(linha(e) for e in resto)}</table></div>
 <h2>Fontes consultadas</h2><ul>{fontes}</ul>
 <p><small>&#10004; = site conferido (FENAJU, orgao publico ou organizadora conhecida). &#9888; = nao conferido: valide na FENAJU antes de qualquer pagamento. Nunca pague via Pix para pessoa fisica.</small></p>
+<p><small>De BH (carro): distancia e tempo de carro a partir de Belo Horizonte ate a sede do municipio, calculados pelo OpenStreetMap (OSRM), com tempo acrescido de 10%. Sem transito. ? = cidade nao identificada. {html.escape(info_dist)}.</small></p>
 <script>
 document.getElementById('f').onchange=function(e){{var v=e.target.value;
 document.querySelectorAll('tr[data-uf]').forEach(function(r){{r.style.display=(!v||r.dataset.uf===v)?'':'none'}})}};
@@ -454,9 +562,10 @@ async def main():
         e["ver"], e["ver_txt"] = verifica(e["link"], dominios)
         unicos.append(e)
     unicos.sort(key=lambda e: (e["data"], e["hora"]))
+    info_dist = calcula_distancias(unicos)
     out = pathlib.Path("site")
     out.mkdir(exist_ok=True)
-    (out / "index.html").write_text(gera_pagina(unicos, status, n_fenaju), encoding="utf-8")
+    (out / "index.html").write_text(gera_pagina(unicos, status, n_fenaju, info_dist), encoding="utf-8")
     (out / "leiloes.json").write_text(json.dumps(unicos, ensure_ascii=False, indent=1), encoding="utf-8")
     print("Total:", len(unicos))
 
