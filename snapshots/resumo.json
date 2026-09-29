@@ -1,0 +1,184 @@
+[
+ {
+  "url": "https://www.fenaju.org.br/leiloeiros",
+  "status": 200,
+  "url_final": "https://www.fenaju.org.br/leiloeiros",
+  "titulo": "FENAJU - Federação Nacional das Juntas Comerciais",
+  "apis_capturadas": 2
+ },
+ {
+  "url": "https://www.fenaju.org.br/leiloeiros/983",
+  "status": 200,
+  "url_final": "https://www.fenaju.org.br/leiloeiros/983",
+  "titulo": "FENAJU - Federação Nacional das Juntas Comerciais",
+  "apis_capturadas": 1
+ },
+ {
+  "url": "https://chaveleilao.com.br/",
+  "status": 200,
+  "url_final": "https://chaveleilao.com.br/",
+  "titulo": "ChaveLeilão — Todos os leilões do Brasil em um só lugar",
+  "apis_capturadas": 1
+ },
+ {
+  "url": "https://leiloesdecarro.com.br/",
+  "status": 200,
+  "url_final": "https://leiloesdecarro.com.br/",
+  "titulo": "Leilão de Veículos — O Maior Portal de Leilões de Carros do Brasil | Carro do Bairro Leilões",
+  "apis_capturadas": 5
+ },
+ {
+  "url": "https://mapadoleilao.com.br/",
+  "status": 200,
+  "url_final": "https://mapadoleilao.com.br/",
+  "titulo": "Mapa do Leilão | Leilões e Vendas Diretas de Imóveis e Veículos Verificados",
+  "apis_capturadas": 1
+ },
+ {
+  "url": "https://leiloverso.com.br/",
+  "status": 200,
+  "url_final": "https://leiloverso.com.br/",
+  "titulo": "Leiloverso — Todos os leilões do Brasil em um único lugar",
+  "apis_capturadas": 4
+ },
+ {
+  "url": "https://leiloai.com/",
+  "status": 200,
+  "url_final": "https://leiloai.com/",
+  "titulo": "LeilôAI, o maior agregador de leilões do Brasil",
+  "apis_capturadas": 9
+ },
+ {
+  "url": "https://autoleilaobr.com.br/",
+  "status": 530,
+  "url_final": "https://autoleilaobr.com.br/",
+  "titulo": "Cloudflare Tunnel error | autoleilaobr.com.br | Cloudflare",
+  "apis_capturadas": 2
+ },
+ {
+  "url": "https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos",
+  "status": 200,
+  "url_final": "https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos",
+  "titulo": "Calendário de Leilões de Veículos — próximas datas por leiloeira e estado | Almanaque do Leilão",
+  "apis_capturadas": 3
+ },
+ {
+  "url": "https://agendadeleiloes.com.br/",
+  "status": 200,
+  "url_final": "https://agendadeleiloes.com.br/",
+  "titulo": "Agenda de Leilões – Agenda de leilões de carro, moto, caminhão e caminhonte",
+  "apis_capturadas": 2
+ },
+ {
+  "url": "https://leiloeirosdobrasil.com.br/",
+  "status": 200,
+  "url_final": "https://leiloeirosdobrasil.com.br/",
+  "titulo": "Leiloeiros do Brasil – Revista on line de leilões oficiais",
+  "apis_capturadas": 0
+ },
+ {
+  "url": "https://leilao.detran.mg.gov.br/",
+  "status": 200,
+  "url_final": "https://leilao.detran.mg.gov.br/",
+  "titulo": "LEILÃO-DETRAN/MG",
+  "apis_capturadas": 0
+ },
+ {
+  "url": "https://pcsdetran.rs.gov.br/consulta-calendario-leilao",
+  "status": 200,
+  "url_final": "https://pcsdetran.rs.gov.br/consulta-calendario-leilao",
+  "titulo": "Central Serviços DetranRS",
+  "apis_capturadas": 10
+ },
+ {
+  "url": "https://www25.receita.fazenda.gov.br/sle-sociedade/portal",
+  "status": 200,
+  "url_final": "https://www25.receita.fazenda.gov.br/sle-sociedade/portal",
+  "titulo": "Sistema Leilão Eletrônico",
+  "apis_capturadas": 1
+ },
+ {
+  "url": "https://leilo.com.br/agenda",
+  "status": 200,
+  "url_final": "https://leilo.com.br/agenda",
+  "titulo": "Agenda de Leilões — Datas, Horários e Locais | Leilo",
+  "apis_capturadas": 15
+ },
+ {
+  "url": "https://www.freitasleiloeiro.com.br/Leiloes/Agenda",
+  "status": 200,
+  "url_final": "https://www.freitasleiloeiro.com.br/Leiloes/Agenda",
+  "titulo": "Agenda | Freitas Leiloeiro - Site Oficial",
+  "apis_capturadas": 5
+ },
+ {
+  "url": "https://www.sodresantoro.com.br/",
+  "status": 200,
+  "url_final": "https://www.sodresantoro.com.br/",
+  "titulo": "Sodre Santoro | Site Oficial: Leiloes de Veiculos e Leiloes Online",
+  "apis_capturadas": 19
+ },
+ {
+  "url": "https://www.copart.com.br/",
+  "status": 200,
+  "url_final": "https://www.copart.com.br/",
+  "titulo": "Leilōes de Veículos Copart Brasil - Carros à Venda",
+  "apis_capturadas": 40
+ },
+ {
+  "url": "https://www.vipleiloes.com.br/",
+  "status": 200,
+  "url_final": "https://www.vipleiloes.com.br/",
+  "titulo": "Leilões de Veículos e Leilões Online | Vip Leilões",
+  "apis_capturadas": 18
+ },
+ {
+  "url": "https://loopleiloes.com.br/",
+  "status": 429,
+  "url_final": "https://loopleiloes.com.br/",
+  "titulo": "Vercel Security Checkpoint",
+  "apis_capturadas": 0
+ },
+ {
+  "url": "https://www.megaleiloes.com.br/",
+  "status": 200,
+  "url_final": "https://www.megaleiloes.com.br/",
+  "titulo": "Leilões Judiciais e Extrajudiciais Online | Mega Leilões",
+  "apis_capturadas": 3
+ },
+ {
+  "url": "https://www.superbid.net/",
+  "status": 200,
+  "url_final": "https://www.superbid.net/",
+  "titulo": "Superbid Exchange - Leilões Online de Veículos, Máquinas e Equipamentos",
+  "apis_capturadas": 41
+ },
+ {
+  "url": "https://www.mgl.com.br/agenda/",
+  "status": 403,
+  "url_final": "https://www.mgl.com.br/agenda/",
+  "titulo": "Um momento…",
+  "apis_capturadas": 0
+ },
+ {
+  "url": "https://www.leiloesbrasil.com.br/agenda",
+  "status": 200,
+  "url_final": "https://www.leiloesbrasil.com.br/agenda",
+  "titulo": "Agenda de leilões em todo Brasil",
+  "apis_capturadas": 1
+ },
+ {
+  "url": "https://www.parquedosleiloes.com.br/",
+  "status": 200,
+  "url_final": "https://www.parquedosleiloes.com.br/",
+  "titulo": "Parque dos Leilões",
+  "apis_capturadas": 2
+ },
+ {
+  "url": "https://www.joaoemilio.com.br/",
+  "status": 403,
+  "url_final": "https://www.joaoemilio.com.br/",
+  "titulo": "Um momento…",
+  "apis_capturadas": 0
+ }
+]

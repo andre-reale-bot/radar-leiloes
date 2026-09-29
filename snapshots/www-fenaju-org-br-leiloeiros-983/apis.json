@@ -1,0 +1,9 @@
+[
+ {
+  "url": "https://www.fenaju.org.br/api/public/leiloeiros/983",
+  "status": 200,
+  "metodo": "GET",
+  "post": "",
+  "amostra": "{\"id\":983,\"nome\":\"SERGIO VILLA NOVA DE FREITAS\",\"email\":\"sergio@freitasleiloeiro.com.br\",\"telefone\":\"(11)3117-1000\",\"endereco\":\"PRAÇA DA LIBERDADE\",\"cidade\":\"São Paulo\",\"estado\":\"SP\",\"cep\":\"01503-010\",\"dominio\":\"https://www.freitasleiloeiro.com.br/\",\"situacao\":\"Regular\",\"juntaComercial\":\"JUNTA COMERCIAL DO ESTADO DE SAO PAULO\",\"juntaId\":2,\"juntaSigla\":\"JUCESP\",\"juntaUF\":\"SP\",\"matricula\":\"316\",\"anoPosse\":\"22/03/1985\",\"imagem\":\"https://api.urdion.com.br/api/assets/content?ref=private%3A%2F%2Fleiloeiros%2F983%[REMOVIDO].png\\u0026expires=1790694889\\[REMOVIDO]\",\"credenciamento\":\"cadastrado\",\"isAssociado\":false,\"nivel\":\"cadastrado\",\"nivelLabel\":\"Cadastrado\",\"dominio_leilao_br\":false,\"dominio_online\":false,\"matriculas\":[{\"matricula\":\"316\",\"anoPosse\":\"22/03/1985\",\"status\":\"Ativa\",\"junta\":{\"id\":2,\"nome\":\"JUNTA COMERCIAL DO ESTADO DE SAO PAULO\",\"sigla\":\"JUCESP\",\"uf\":\"SP\"}}],\"dadosJunta\":{\"nome\":\"SILVANA REGINA PINHEIRO BIASI\",\"matricula\":\"502\",\"situacao\":\"Regular\",\"junta\":\"\",\"anoPosse\":\"21/09/1995\"},\"bairro\":\"Liberdade\",\"complemento\":\"CONJ. 1501 1504, 15º ANDAR\",\"numero\":\"130\",\"contatos\":{\"telefones\":[{\"valor\":\"1131171000\",\"exibicao\":\"(11) 3117-1000\",\"subtipo\":\"fixo\",\"principal\":true,\"origem\":\"cadastro\"}],\"emails\":[{\"valor\":\"sergio@freitasleiloeiro.com.br\",\"exibicao\":\"sergio@freitasleiloeiro.com.br\",\"principal\":true,\"origem\":\"cadastro\"}]}}\n"
+ }
+]

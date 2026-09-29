@@ -1,0 +1,9 @@
+[
+ {
+  "url": "https://chaveleilao.com.br/icon.svg",
+  "status": 200,
+  "metodo": "GET",
+  "post": "",
+  "amostra": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 512 512\">\n  <rect width=\"512\" height=\"512\" rx=\"80\" fill=\"#FFD700\"/>\n  <g transform=\"translate(256 256) rotate(-45)\" fill=\"#1a56db\">\n    <!-- cabeça grande -->\n    <circle cx=\"-110\" cy=\"0\" r=\"86\"/>\n    <circle cx=\"-110\" cy=\"0\" r=\"34\" fill=\"#FFD700\"/>\n    <!-- haste -->\n    <rect x=\"-30\" y=\"-22\" width=\"180\" height=\"44\" rx=\"6\"/>\n    <!-- dentes -->\n    <rect x=\"90\" y=\"22\" width=\"26\" height=\"50\" rx=\"4\"/>\n    <rect x=\"124\" y=\"22\" width=\"26\" height=\"32\" rx=\"4\"/>\n  </g>\n</svg>\n"
+ }
+]
