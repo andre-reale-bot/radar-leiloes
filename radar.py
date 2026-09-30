@@ -2,7 +2,8 @@
 import asyncio, json, re, pathlib, datetime, html, unicodedata, os, csv, io, time, urllib.request
 from urllib.parse import urlparse
 
-HOJE = datetime.date.today()
+# Data de Brasilia (UTC-3). O servidor do GitHub usa UTC: sem isto, apos 21:00 a janela pulava um dia.
+HOJE = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=3)).date()
 LIMITE = HOJE + datetime.timedelta(days=15)
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
@@ -353,6 +354,40 @@ def p_saraiva(cap):
     return p_suporteleiloes(cap, "Saraiva Leiloes", "https://saraivaleiloes.com.br")
 
 
+# Marcas e modelos comuns: titulos como "16 MMB L200 E TRITON, 03 STRADA" nao citam "veiculo"
+MARCAS = re.compile(r"\b(FIAT|VW|VOLKSWAGEN|FORD|CHEVROLET|GM|TOYOTA|HONDA|HYUNDAI|RENAULT|NISSAN|MITSUBISHI|MMC|"
+                    r"JEEP|PEUGEOT|CITROEN|STRADA|DUSTER|L200|TRITON|HILUX|S10|GOL|UNO|PALIO|SAVEIRO|AMAROK|RANGER)\b")
+
+
+def p_kleiber(cap):
+    """Kleiber Leiloes (Cuiaba/MT): blocos '164/2026' + tipo + comitente + titulo + datas 'dd/mm/aaaa - 09H00'."""
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    idx = [i for i, l in enumerate(linhas) if re.fullmatch(r"\d{1,4}/20\d\d", l)]
+    out = []
+    for k, i in enumerate(idx):
+        bloco = linhas[i + 1: idx[k + 1] if k + 1 < len(idx) else i + 30]
+        if len(bloco) < 3:
+            continue
+        comitente, titulo = bloco[1], bloco[2]
+        if not (eh_veiculo(titulo) or MARCAS.search(sem_acento(titulo))):
+            continue
+        junto = sem_acento(" ".join(bloco))
+        modo = next((m for m in ("ONLINE", "SIMULTANEO", "PRESENCIAL") if m in junto), "")
+        lotes = next((bloco[j - 1] for j, b in enumerate(bloco) if b == "LOTE(S)" and j > 0), "")
+        uf = acha_uf(comitente) or acha_uf(titulo) or "MT"
+        rotulo = ""
+        for b in bloco:
+            if "PRACA" in sem_acento(b):
+                rotulo = b.title()
+            m = re.fullmatch(r"(\d{2}/\d{2}/\d{4})\s*-\s*(\d{1,2})H(\d{2})", b.upper())
+            if m:
+                nome = f"Kleiber Leiloes - {titulo.title()}" + (f" ({rotulo})" if rotulo else "")
+                out.append(evento(data_br(m.group(1)), nome, "Kleiber Leiloes", "https://www.kleiberleiloes.com.br/",
+                                  "Online" if modo == "ONLINE" else "", uf, f"{int(m.group(2)):02d}:{m.group(3)}",
+                                  f"{lotes} lotes; comitente: {comitente.title()}; {modo.lower()}"))
+    return out
+
+
 def p_gp(cap):
     """GP Leiloes (BH): API gp-api/index/inicio (agenda), com 1a e 2a praca."""
     out, vistos = [], set()
@@ -417,6 +452,7 @@ FONTES = [
     ("GP Leiloes", "https://www.gpleiloes.com.br/", p_gp,
      [{"url": "https://www.gpleiloes.com.br/gp-api/index/inicio/1/60", "post": {"filtro": None}}]),
     ("Leiloes MG (Seplag)", "https://www.leiloes.mg.gov.br/", p_leiloes_mg, []),
+    ("Kleiber Leiloes", "https://kleiberleiloes.com.br/", p_kleiber, []),
 ]
 
 # ---------------------------------------------------------------- coleta
