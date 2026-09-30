@@ -32,6 +32,51 @@ FONTES = [
     "https://www.leiloesbrasil.com.br/agenda",
     "https://www.parquedosleiloes.com.br/",
     "https://www.joaoemilio.com.br/",
+    # Lista de leiloeiros enviada pelo usuario (Passo 20)
+    "https://joaoemilio.com.br/",
+    "https://www.norteleiloes.com.br/",
+    "https://www.kronleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+    "https://sampaioleiloes.com.br/home",
+    "https://wrleiloes.com.br/",
+    "https://www.cardosoleiloes.com.br/",
+    "https://www.leiloesfreire.com.br/",
+    "https://www.mgl.com.br/online/1/4/",
+    "https://www.amtleiloes.com.br/",
+    "https://www.aragaoleiloes.com.br/",
+    "https://www.palaciodosleiloes.com.br/site/index.php",
+    "https://saraivaleiloes.com.br/",
+    "https://www.leiloes.mg.gov.br/",
+    "https://www.leiloeiropublico.com.br/",
+    "https://www.gpleiloes.com.br/#/",
+    "https://leiloei.com/felipe-nunes-gomes-teixeira-bignardi",
+    "https://www.universodosleiloes.com.br/",
+    "https://danielgarcialeiloes.com.br/",
+    "https://topleiloes.com.br/home",
+    "https://www.ricoleiloes.com.br/",
+    "https://www.sumareleiloes.com.br/",
+    "https://tulioleiloes.com.br/",
+    "https://www.brunoniewinskileiloes.com.br/",
+    "https://www.lanceja.com.br/",
+    "https://www.e-leiloes.com.br/",
+    "https://kleiberleiloes.com.br/",
+    "https://www.savoyleiloes.com.br/",
+    "https://www.vincoleiloes.com.br/",
+    "https://www.mafraleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+    "https://www.monzonleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+    "https://leilaopublico.paas.pr.gov.br/",
+    "https://www.pestanaleiloes.com.br/",
+]
+
+# Dominios a verificar (anti-golpe): cadastro FENAJU e data de registro do dominio
+VERIFICAR = [
+    "norteleiloes.com.br", "kronleiloes.com.br", "sampaioleiloes.com.br", "joaoemilio.com.br",
+    "wrleiloes.com.br", "parquedosleiloes.com.br", "cardosoleiloes.com.br", "leiloesfreire.com.br",
+    "mgl.com.br", "amtleiloes.com.br", "aragaoleiloes.com.br", "palaciodosleiloes.com.br",
+    "saraivaleiloes.com.br", "leiloeiropublico.com.br", "gpleiloes.com.br", "leiloei.com",
+    "universodosleiloes.com.br", "danielgarcialeiloes.com.br", "topleiloes.com.br", "ricoleiloes.com.br",
+    "sumareleiloes.com.br", "tulioleiloes.com.br", "brunoniewinskileiloes.com.br", "lanceja.com.br",
+    "e-leiloes.com.br", "kleiberleiloes.com.br", "savoyleiloes.com.br", "vincoleiloes.com.br",
+    "mafraleiloes.com.br", "monzonleiloes.com.br", "pestanaleiloes.com.br", "copart.com.br",
 ]
 
 OUT = pathlib.Path("snapshots")
@@ -99,6 +144,46 @@ async def captura(browser, url, sem):
         print(info)
         return info
 
+async def base_fenaju(ctx, origem):
+    """Baixa a base publica de leiloeiros da FENAJU (todas as paginas)."""
+    regs, pagina, paginas = [], 1, 1
+    while pagina <= paginas and pagina <= 300:
+        url = f"https://www.fenaju.org.br/api/public/leiloeiros?page={pagina}" + (f"&origem={origem}" if origem else "")
+        try:
+            r = await ctx.request.get(url, timeout=30000)
+            if not r.ok:
+                print("FENAJU", origem, pagina, r.status)
+                break
+            d = await r.json()
+        except Exception as ex:
+            print("FENAJU erro", origem, pagina, ex)
+            break
+        paginas = d.get("totalPages", 1)
+        regs.extend(d.get("data", []))
+        pagina += 1
+        await asyncio.sleep(0.4)
+    return regs
+
+async def verifica_dominios(browser):
+    ctx = await browser.new_context(user_agent=UA)
+    saida = {"fenaju": {}, "rdap": {}}
+    for origem in ("fenaju", ""):
+        regs = await base_fenaju(ctx, origem)
+        saida["fenaju"][origem or "sem_origem"] = len(regs)
+        grava_gz(OUT / f"fenaju_base_{origem or 'sem_origem'}.json", json.dumps(regs, ensure_ascii=False))
+    for dom in VERIFICAR:
+        url = (f"https://rdap.registro.br/domain/{dom}" if dom.endswith(".br")
+               else f"https://rdap.verisign.com/com/v1/domain/{dom}")
+        try:
+            r = await ctx.request.get(url, timeout=30000)
+            saida["rdap"][dom] = {"status": r.status, "corpo": (await r.text())[:20000]}
+        except Exception as ex:
+            saida["rdap"][dom] = {"erro": repr(ex)[:300]}
+        await asyncio.sleep(0.5)
+    await ctx.close()
+    (OUT / "verificacao.json").write_text(json.dumps(saida, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("Verificacao:", saida["fenaju"])
+
 async def main():
     OUT.mkdir(exist_ok=True)
     # Apaga capturas antigas sem compressao, para nao misturar com as novas
@@ -108,6 +193,10 @@ async def main():
     sem = asyncio.Semaphore(4)
     async with async_playwright() as p:
         browser = await p.chromium.launch()
+        try:
+            await verifica_dominios(browser)
+        except Exception as ex:
+            print("Verificacao falhou:", ex)
         resultados = await asyncio.gather(*(captura(browser, u, sem) for u in FONTES))
         await browser.close()
     (OUT / "resumo.json").write_text(json.dumps(resultados, ensure_ascii=False, indent=1),
