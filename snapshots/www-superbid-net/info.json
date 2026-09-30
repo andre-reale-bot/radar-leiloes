@@ -1,7 +1,7 @@
 {
  "url": "https://www.superbid.net/",
- "status": 200,
+ "status": 403,
  "url_final": "https://www.superbid.net/",
- "titulo": "Superbid Exchange - Leilões Online de Veículos, Máquinas e Equipamentos",
- "apis_capturadas": 42
+ "titulo": "Um momento…",
+ "apis_capturadas": 0
 }

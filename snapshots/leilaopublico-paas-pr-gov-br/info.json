@@ -1,0 +1,5 @@
+{
+ "url": "https://leilaopublico.paas.pr.gov.br/",
+ "erro": "TimeoutError('Page.goto: Timeout 60000ms exceeded.\\nCall log:\\n  - navigating to \"https://leilaopublico.paas.pr.gov.br/\", waiting until \"domcontentloaded\"\\n')",
+ "apis_capturadas": 0
+}

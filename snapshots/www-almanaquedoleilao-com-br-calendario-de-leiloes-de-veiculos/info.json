@@ -1,7 +1,5 @@
 {
  "url": "https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos",
- "status": 200,
- "url_final": "https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos",
- "titulo": "Calendário de Leilões de Veículos — próximas datas por leiloeira e estado | Almanaque do Leilão",
- "apis_capturadas": 3
+ "erro": "Error('Page.goto: net::ERR_CONNECTION_CLOSED at https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos\\nCall log:\\n  - navigating to \"https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos\", waiting until \"domcontentloaded\"\\n')",
+ "apis_capturadas": 0
 }

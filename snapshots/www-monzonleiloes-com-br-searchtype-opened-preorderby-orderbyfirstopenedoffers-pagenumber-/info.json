@@ -1,0 +1,7 @@
+{
+ "url": "https://www.monzonleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+ "status": 200,
+ "url_final": "https://www.monzonleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+ "titulo": "",
+ "apis_capturadas": 3
+}
