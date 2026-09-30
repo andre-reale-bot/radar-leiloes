@@ -487,6 +487,253 @@ def p_wr(cap):
     return out
 
 
+MESES3 = {"JAN": 1, "FEV": 2, "MAR": 3, "ABR": 4, "MAI": 5, "JUN": 6, "JUL": 7, "AGO": 8, "SET": 9, "OUT": 10,
+          "NOV": 11, "DEZ": 12}
+
+
+def p_norte(cap):
+    """Norte Leiloes (PA/AM/MA): API sistema.norteleiloes.com.br/index/leiloes2 (paginada)."""
+    out, vistos = [], set()
+    for a in cap["apis"]:
+        if "index/leiloes2" not in a["url"]:
+            continue
+        try:
+            lista = json.loads(a["corpo"]).get("dados", [])
+        except Exception:
+            continue
+        for x in lista:
+            if x.get("LEI_ID") in vistos:
+                continue
+            vistos.add(x.get("LEI_ID"))
+            nome, local = x.get("LEI_NOME") or "", x.get("LRL_NOME") or ""
+            if (x.get("LEI_SITE_SITUACAO") or "") in ("CANCELADO", "SUSPENSO", "REALIZADO", "ENCERRADO"):
+                continue
+            if not eh_veiculo(nome):
+                continue
+            try:
+                dt = datetime.date.fromisoformat(x.get("LED_DIA") or "")
+            except ValueError:
+                continue
+            h = re.search(r"(\d{1,2})h(\d{2})", x.get("LED_DIA_F") or "")
+            out.append(evento(dt, f"Norte Leiloes - {nome.title()}", "Norte Leiloes",
+                              x.get("urlLeilao") or "https://www.norteleiloes.com.br/leiloes",
+                              "Online" if "ONLINE" in sem_acento(local) else "", acha_uf(local) or acha_uf(nome),
+                              f"{int(h.group(1)):02d}:{h.group(2)}" if h else "",
+                              f"{x.get('LEI_QTD_LOTES') or '?'} lotes; {local.title()}"))
+    return out
+
+
+def p_leiloeiropublico(cap):
+    """Leiloeiro Publico (SC/PR): API api-lances.leiloeiropublico.com.br/leilao/agenda/ativos/todos."""
+    d = _json(cap, "leilao/agenda/ativos")
+    out = []
+    for x in d or []:
+        titulo = html.unescape(re.sub(r"<[^>]+>", "", x.get("titulo") or "")).strip()
+        if x.get("status") == "Encerrado" or x.get("vendaDireta"):
+            continue
+        if not eh_veiculo(titulo + " " + (x.get("resumo") or "")):
+            continue
+        m = re.search(r":\s*(.+?)\s*\(([A-Z]{2})\)", titulo)
+        cidade, uf = (m.group(1), m.group(2)) if m else ("", acha_uf(titulo))
+        link = f"https://www.leiloeiropublico.com.br/ListagemLote.aspx?Leilao={x.get('id')}"
+        datas = [x.get("dataHora1") or ""]
+        if (x.get("dataHora2") or "")[:10] != datas[0][:10]:
+            datas.append(x.get("dataHora2") or "")
+        for k, dh in enumerate(datas):
+            try:
+                dt = datetime.date.fromisoformat(dh[:10])
+            except ValueError:
+                continue
+            rot = f" ({k + 1}o leilao)" if len(datas) > 1 else ""
+            out.append(evento(dt, f"Leiloeiro Publico - {titulo}{rot}", "Leiloeiro Publico", link, cidade, uf,
+                              dh[11:16], (x.get("resumo") or "").strip()))
+    return out
+
+
+def p_leilotech(cap, fonte, base):
+    """Plataforma Leilotech (ex.: Tulio Leiloes): GraphQL 'Agenda' capturado ao abrir /agenda."""
+    out = []
+    for a in cap["apis"]:
+        if "graphql" not in a["url"]:
+            continue
+        try:
+            itens = json.loads(a["corpo"])["data"]["agenda"]["items"]
+        except Exception:
+            continue
+        for it in itens:
+            le = it.get("leilao") or {}
+            if it.get("suspensa") or it.get("retirada"):
+                continue
+            titulo = le.get("title") or ""
+            if not eh_veiculo(titulo + " " + (le.get("description") or "")):
+                continue
+            try:
+                dt = datetime.date.fromisoformat((it.get("data") or "")[:10])
+            except ValueError:
+                continue
+            loc = le.get("location") or {}
+            out.append(evento(dt, f"{fonte} - {titulo.title()}", fonte, base + "/agenda",
+                              loc.get("city") or "", loc.get("uf") or "", (it.get("data") or "")[11:16],
+                              f"{le.get('lotesCount', '?')} lotes; comitente: {(le.get('comitente') or {}).get('nome', '')}"))
+    return out
+
+
+def p_tulio(cap):
+    return p_leilotech(cap, "Tulio Leiloes", "https://tulioleiloes.com.br")
+
+
+def p_savoy(cap):
+    """Savoy Leiloes (SP): API api.savoyleiloes.com.br/rest/v1/auctions (fases com data de encerramento em UTC)."""
+    out = []
+    for a in cap["apis"]:
+        if "rest/v1/auctions" not in a["url"]:
+            continue
+        try:
+            lista = json.loads(a["corpo"])
+        except Exception:
+            continue
+        for x in lista:
+            titulo, sub = (x.get("title") or "").strip(), (x.get("subtitle") or "").strip(' "')
+            if not eh_veiculo(titulo + " " + sub):
+                continue
+            m = re.search(r"de ([A-Za-zÀ-ú ]+?)\s*-\s*([A-Z]{2})\b", titulo)
+            cidade, uf = (m.group(1).strip(), m.group(2)) if m else ("", acha_uf(titulo))
+            for f in x.get("auction_phases") or []:
+                if f.get("completed"):
+                    continue
+                try:
+                    utc = datetime.datetime.fromisoformat(f["end_date"])
+                except (KeyError, ValueError):
+                    continue
+                br = utc - datetime.timedelta(hours=3)
+                out.append(evento(br.date(), f"Savoy Leiloes - {titulo}", "Savoy Leiloes",
+                                  "https://www.savoyleiloes.com.br/agenda", cidade, uf, br.strftime("%H:%M"),
+                                  f"{x.get('lots_count', '?')} lotes; {sub}; data = encerramento"))
+    return out
+
+
+def p_vinco(cap):
+    """Vinco Leiloes (SP): cards da capa (exige rolar a pagina). 'ID: 483' + titulo + datas 'Qua, 30/Set/2026, 10h00'."""
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    out = []
+    i = 0
+    while i < len(linhas) - 1:
+        m = re.fullmatch(r"(?:ID:?\s*)?(\d{2,4})", linhas[i])
+        if not m or len(linhas[i + 1]) < 15:
+            i += 1
+            continue
+        lid, titulo = m.group(1), linhas[i + 1]
+        j, bloco = i + 2, []
+        while j < len(linhas) and not re.fullmatch(r"(?:ID:?\s*)?\d{2,4}", linhas[j]) and len(bloco) < 8:
+            bloco.append(linhas[j])
+            j += 1
+        i = j
+        junto = sem_acento(" ".join(bloco))
+        if "ENCERRADO" in junto or "SUSTADO" in junto:
+            continue
+        if not (eh_veiculo(titulo) or MARCAS.search(sem_acento(titulo))):
+            continue
+        for b in bloco:
+            d = re.search(r"(\d{2})/([A-Za-z]{3})/(\d{4}),\s*(\d{1,2})h(\d{2})", b)
+            if not d or sem_acento(d.group(2)) not in MESES3:
+                continue
+            try:
+                dt = datetime.date(int(d.group(3)), MESES3[sem_acento(d.group(2))], int(d.group(1)))
+            except ValueError:
+                continue
+            rot = f" ({b.split(':')[0]})" if "PRACA" in sem_acento(b) else ""
+            cid = re.search(r"[-–]\s*([A-Za-zÀ-ú .']+?)\s*/\s*([A-Z]{2})\s*$", titulo)
+            out.append(evento(dt, f"Vinco Leiloes - {titulo}{rot}", "Vinco Leiloes",
+                              f"https://www.vincoleiloes.com.br/leilao.php?idLeilao={lid}",
+                              cid.group(1).strip() if cid else "", cid.group(2) if cid else acha_uf(titulo),
+                              f"{int(d.group(4)):02d}:{d.group(5)}", ""))
+    return out
+
+
+def p_cardoso(cap):
+    """Cardoso Leiloes (SP): titulo seguido de '1o Leilao: dd/mm/aaaa as hh:mm'."""
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    out, vistos = [], set()
+    inicios = [i for i, l in enumerate(linhas) if re.match(r"1º Leil", l) and i > 0]
+    for k, i in enumerate(inicios):
+        titulo = linhas[i - 1]
+        fim = inicios[k + 1] - 1 if k + 1 < len(inicios) else i + 12
+        bloco = linhas[i: min(fim, i + 12)]
+        detalhes = " ".join(bloco)
+        if not (eh_veiculo(titulo + " " + detalhes) or MARCAS.search(sem_acento(titulo + " " + detalhes))):
+            continue
+        if any(p in sem_acento(titulo) for p in ("APTO", "APARTAMENTO", "RUA ", "CASA", "TERRENO", "IMOVEL")):
+            continue
+        for b in bloco:
+            m = re.match(r"(\d)º Leil\S*:\s*(\d{2}/\d{2}/\d{4})\s+às\s+(\d{2}:\d{2})", b)
+            if m and (titulo, m.group(2)) not in vistos:
+                vistos.add((titulo, m.group(2)))
+                out.append(evento(data_br(m.group(2)), f"Cardoso Leiloes - {titulo} ({m.group(1)}o leilao)",
+                                  "Cardoso Leiloes", "https://www.cardosoleiloes.com.br/",
+                                  "Online" if "ONLINE" in sem_acento(detalhes) else "", acha_uf(titulo), m.group(3), ""))
+    return out
+
+
+def p_freire(cap):
+    """Leiloes Freire (AL/PE/SE): comitente, 'dd/mm/aaaa as hh:mm', modo, status, local, '- Cidade - UF'."""
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    out = []
+    for i, l in enumerate(linhas):
+        m = re.fullmatch(r"(\d{2}/\d{2}/\d{4})\s+às\s+(\d{2}:\d{2})", l)
+        if not m or i == 0:
+            continue
+        comitente = linhas[i - 1]
+        bloco = linhas[i + 1: i + 6]
+        if not eh_veiculo(comitente + " " + " ".join(bloco[:3])):
+            continue
+        cid = next((re.match(r"-?\s*(.+?)\s*-\s*([A-Z]{2})$", b) for b in bloco if re.match(r"-?\s*.+?\s*-\s*[A-Z]{2}$", b)), None)
+        out.append(evento(data_br(m.group(1)), f"Leiloes Freire - {comitente.title()}", "Leiloes Freire",
+                          "https://www.leiloesfreire.com.br/", cid.group(1) if cid else "",
+                          cid.group(2) if cid else acha_uf(comitente), m.group(2), " ".join(bloco[:2])))
+    return out
+
+
+def p_astavero(cap, fonte, base):
+    """Plataforma dos sites Top/Pizzolatti e Sampaio: API app/lotes (lotes agrupados por leilao)."""
+    grupos = {}
+    for a in cap["apis"]:
+        if not a["url"].endswith("/app/lotes"):
+            continue
+        try:
+            lotes = json.loads(a["corpo"]).get("lotes", [])
+        except Exception:
+            continue
+        for x in lotes:
+            g = grupos.setdefault(x.get("leilao"), {"lotes": {}, "x": x})
+            g["lotes"][x.get("id")] = x
+    out = []
+    for lid, g in grupos.items():
+        lotes = list(g["lotes"].values())
+        veic = [x for x in lotes if eh_veiculo(x.get("nome") or "") or MARCAS.search(sem_acento(x.get("nome") or ""))]
+        x = g["x"]
+        if not veic or "TESTE" in sem_acento(x.get("vara") or ""):
+            continue
+        try:
+            dt = datetime.date.fromisoformat((x.get("data") or "")[:10])
+        except ValueError:
+            continue
+        loc = re.match(r"(.+?)\s*-\s*([A-Z]{2})$", x.get("local") or "")
+        exemplos = ", ".join((v.get("nome") or "")[:40] for v in veic[:3])
+        out.append(evento(dt, f"{fonte} - {x.get('vara') or 'Leilao'}", fonte,
+                          x.get("url") or base, loc.group(1) if loc else "", loc.group(2) if loc else "",
+                          (x.get("data") or "")[11:16],
+                          f"{len(veic)} veiculo(s) entre os lotes vistos: {exemplos}"))
+    return out
+
+
+def p_top(cap):
+    return p_astavero(cap, "Top Leiloes (Pizzolatti)", "https://topleiloes.com.br")
+
+
+def p_sampaio(cap):
+    return p_astavero(cap, "Sampaio Leiloes", "https://sampaioleiloes.com.br")
+
+
 def p_gp(cap):
     """GP Leiloes (BH): API gp-api/index/inicio (agenda), com 1a e 2a praca."""
     out, vistos = [], set()
@@ -535,6 +782,11 @@ def p_leiloes_mg(cap):
                    "Leitor ainda nao conhece o formato; revisar manualmente")]
 
 
+# Consulta de todos os lotes abertos (agenda) da plataforma de Top e Sampaio
+LOTES_POST = {"botao": "AGENDA DE LEILÕES", "origem": "", "comitente": "", "categoria": "", "categ": -1, "sub": "",
+              "isub": -1, "uf": "", "cidade": "", "busca": "", "mes": HOJE.isoformat(), "s3url": "", "page": 0,
+              "pages": 0, "limite": 300, "count": 0}
+
 FONTES = [
     ("Detran-MG", "https://leilao.detran.mg.gov.br/", p_detran_mg, []),
     ("Detran-RS", "https://pcsdetran.rs.gov.br/consulta-calendario-leilao", p_detran_rs, []),
@@ -556,6 +808,18 @@ FONTES = [
     ("Pestana Leiloes", "https://www.pestanaleiloes.com.br/agenda-de-leiloes", p_pestana,
      [{"clicar": "Próximo", "vezes": 4}]),
     ("WR Leiloes", "https://wrleiloes.com.br/agenda-de-leiloes", p_wr, []),
+    ("Norte Leiloes", "https://www.norteleiloes.com.br/leiloes", p_norte,
+     [f"https://www.sistema.norteleiloes.com.br/index/leiloes2?pagina={n}&porPagina=12&&api=true" for n in (2, 3, 4)]),
+    ("Leiloeiro Publico", "https://www.leiloeiropublico.com.br/Agenda.aspx", p_leiloeiropublico, []),
+    ("Tulio Leiloes", "https://tulioleiloes.com.br/agenda", p_tulio, []),
+    ("Savoy Leiloes", "https://www.savoyleiloes.com.br/agenda", p_savoy, []),
+    ("Vinco Leiloes", "https://www.vincoleiloes.com.br/", p_vinco, [{"rolar": 5}]),
+    ("Cardoso Leiloes", "https://www.cardosoleiloes.com.br/", p_cardoso, []),
+    ("Leiloes Freire", "https://www.leiloesfreire.com.br/", p_freire, []),
+    ("Top Leiloes (Pizzolatti)", "https://topleiloes.com.br/home", p_top,
+     [{"url": "https://topleiloes.com.br/app/lotes", "post": dict(LOTES_POST, dom="pizzolatti")}]),
+    ("Sampaio Leiloes", "https://sampaioleiloes.com.br/home", p_sampaio,
+     [{"url": "https://sampaioleiloes.com.br/app/lotes", "post": dict(LOTES_POST, dom="sampaio")}]),
 ]
 
 # ---------------------------------------------------------------- coleta
@@ -588,6 +852,13 @@ async def captura(browser, url, extras):
         cap["url_final"] = page.url
         for e in extras:
             try:
+                if isinstance(e, dict) and "rolar" in e:  # rola a pagina para carregar cards preguicosos
+                    for _ in range(e["rolar"]):
+                        await page.mouse.wheel(0, 4000)
+                        await page.wait_for_timeout(1500)
+                    cap["texto"] = await page.inner_text("body")
+                    cap["html"] = await page.content()
+                    continue
                 if isinstance(e, dict) and "clicar" in e:  # paginacao: clica em "Proximo" e junta o texto
                     for _ in range(e.get("vezes", 1)):
                         botao = page.get_by_text(e["clicar"], exact=True).first
@@ -890,6 +1161,7 @@ def gera_pagina(eventos, status, n_fenaju, info_dist="", alertas=None):
         os.environ.get("GITHUB_EVENT_NAME", ""), "execucao fora do GitHub")
     return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>Radar de Leiloes</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📡</text></svg>">
 <style>
 body{{font-family:system-ui,Arial,sans-serif;margin:0;padding:12px;background:#f6f7f9;color:#1d2330}}
 h1{{font-size:20px;margin:4px 0}} h2{{font-size:16px;margin:18px 0 6px}}
