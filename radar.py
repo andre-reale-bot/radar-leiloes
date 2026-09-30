@@ -440,6 +440,53 @@ def p_eleiloes(cap):
     return out
 
 
+def p_pestana(cap):
+    """Pestana Leiloes (RS/PR): agenda paginada; blocos ': 433 lotes' / modo / titulo / datas."""
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    out, vistos = [], set()
+    for i, l in enumerate(linhas):
+        n = re.fullmatch(r":\s*(\d+)\s+lotes?", l)
+        if not n or i + 3 >= len(linhas):
+            continue
+        modo, titulo, datas = linhas[i + 1], linhas[i + 2], linhas[i + 3]
+        if not eh_veiculo(titulo):
+            continue
+        pares = re.findall(r"(\d{2}/\d{2}/\d{4})\s+\w{3}\s*-\s*(\d{2}:\d{2})", datas)
+        for k, (d, h) in enumerate(pares):
+            rot = f" ({k + 1}o leilao)" if len(pares) > 1 else ""
+            chave = (titulo, d, h)
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            out.append(evento(data_br(d), f"Pestana Leiloes - {titulo}{rot}", "Pestana Leiloes",
+                              "https://www.pestanaleiloes.com.br/agenda-de-leiloes",
+                              "Online" if "ONLINE" in sem_acento(modo) else "", "", h,
+                              f"{n.group(1)} lotes; {modo.lower()}"))
+    return out
+
+
+def p_wr(cap):
+    """WR Leiloes (AC/RR/AM): agenda com 'dd/mm/aaaa as hh:mm' seguido do titulo."""
+    links = {slug_texto(m.group(2)): m.group(0)
+             for m in re.finditer(r"https://www\.wrleiloes\.com\.br/leilao/(\d+)/([a-z0-9-]+)", cap["html"])}
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    out = []
+    for i, l in enumerate(linhas):
+        m = re.fullmatch(r"(\d{2}/\d{2}/\d{4})\s+às\s+(\d{2}:\d{2})", l)
+        if not m or i + 2 >= len(linhas):
+            continue
+        titulo, modo = linhas[i + 1], linhas[i + 2]
+        if not (eh_veiculo(titulo) or "DETRAN" in sem_acento(titulo)):
+            continue
+        sl = slug_texto(titulo)
+        link = links.get(sl) or next((u for k, u in links.items() if k.startswith(sl[:50])), "https://wrleiloes.com.br/agenda-de-leiloes")
+        out.append(evento(data_br(m.group(1)), f"WR Leiloes - {titulo}", "WR Leiloes", link,
+                          "Online" if "ONLINE" in sem_acento(modo) else "",
+                          acha_uf(titulo) or next(iter(re.findall(r"DETRAN\s*-\s*([A-Z]{2})\b", sem_acento(titulo))), ""),
+                          m.group(2), modo))
+    return out
+
+
 def p_gp(cap):
     """GP Leiloes (BH): API gp-api/index/inicio (agenda), com 1a e 2a praca."""
     out, vistos = [], set()
@@ -506,6 +553,9 @@ FONTES = [
     ("Leiloes MG (Seplag)", "https://www.leiloes.mg.gov.br/", p_leiloes_mg, []),
     ("Kleiber Leiloes", "https://kleiberleiloes.com.br/", p_kleiber, []),
     ("E-Leiloes", "https://www.e-leiloes.com.br/", p_eleiloes, []),
+    ("Pestana Leiloes", "https://www.pestanaleiloes.com.br/agenda-de-leiloes", p_pestana,
+     [{"clicar": "Próximo", "vezes": 4}]),
+    ("WR Leiloes", "https://wrleiloes.com.br/agenda-de-leiloes", p_wr, []),
 ]
 
 # ---------------------------------------------------------------- coleta
@@ -524,9 +574,10 @@ async def captura(browser, url, extras):
             pass
 
     page.on("response", lambda r: pend.append(asyncio.ensure_future(guarda(r))))
-    cap = {"texto": "", "html": "", "apis": apis, "erro": ""}
+    cap = {"texto": "", "html": "", "apis": apis, "erro": "", "status": None, "url_final": ""}
     try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        resp = await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        cap["status"] = resp.status if resp else None
         try:
             await page.wait_for_load_state("networkidle", timeout=25000)
         except Exception:
@@ -534,8 +585,18 @@ async def captura(browser, url, extras):
         await page.wait_for_timeout(4000)
         cap["html"] = await page.content()
         cap["texto"] = await page.inner_text("body")
+        cap["url_final"] = page.url
         for e in extras:
             try:
+                if isinstance(e, dict) and "clicar" in e:  # paginacao: clica em "Proximo" e junta o texto
+                    for _ in range(e.get("vezes", 1)):
+                        botao = page.get_by_text(e["clicar"], exact=True).first
+                        if not await botao.count():
+                            break
+                        await botao.click(timeout=10000)
+                        await page.wait_for_timeout(3500)
+                        cap["texto"] += "\n" + await page.inner_text("body")
+                    continue
                 if isinstance(e, dict):  # consulta POST (ex.: agenda completa da GP)
                     r = await page.request.post(e["url"], data=json.dumps(e["post"]),
                                                 headers={"Content-Type": "application/json"}, timeout=30000)
@@ -712,9 +773,85 @@ def calcula_distancias(eventos):
     print("Distancias:", com, "de", len(eventos), "leiloes")
     return f"{com} de {len(eventos)} leiloes com distancia" + (" (OSRM falhou em parte)" if falhas else "")
 
+# ---------------------------------------------------------------- saude das fontes (contingencia)
+
+SAUDE_URL = "https://andre-reale-bot.github.io/radar-leiloes/saude.json"  # historico publicado na propria pagina
+
+
+def dominio_base(u):
+    """Dominio base para comparar redirecionamentos: 3 rotulos em .com.br/.gov.br etc., 2 no resto."""
+    h = host(u)
+    partes = h.split(".")
+    if len(partes) >= 3 and partes[-1] == "br" and len(partes[-2]) <= 3:
+        return ".".join(partes[-3:])
+    return ".".join(partes[-2:])
+
+
+def carrega_saude():
+    try:
+        return json.loads(baixa_texto(SAUDE_URL, timeout=30))
+    except Exception as ex:
+        print("Historico de saude indisponivel (normal na 1a vez):", ex)
+        return {"fontes": {}, "rdap": {}}
+
+
+def avalia_saude(saude, nome, url, cap, qtd):
+    """Atualiza o historico da fonte e devolve a lista de alertas dela."""
+    hoje = HOJE.isoformat()
+    f = saude["fontes"].setdefault(nome, {"qtds": {}, "falha_desde": None})
+    alertas = []
+    falhou = bool(cap["erro"] and not cap["texto"]) or (cap["status"] or 200) >= 400
+    if falhou:
+        f["falha_desde"] = f["falha_desde"] or hoje
+        if f["falha_desde"] < hoje:
+            alertas.append(f"site fora do ar ou com erro desde {f['falha_desde']} "
+                           f"(status {cap['status'] or 'sem resposta'})")
+    else:
+        f["falha_desde"] = None
+    if cap["url_final"] and dominio_base(cap["url_final"]) != dominio_base(url):
+        alertas.append(f"o site redirecionou para outro dominio: {host(cap['url_final'])}")
+    anteriores = [v for d, v in sorted(f["qtds"].items()) if d < hoje][-7:]
+    if not falhou and qtd == 0 and len(anteriores) >= 2 and sorted(anteriores)[len(anteriores) // 2] >= 1:
+        alertas.append("nenhum leilao lido hoje, mas a fonte costuma ter; o site pode ter mudado de layout")
+    if not falhou:
+        f["qtds"][hoje] = qtd
+        f["qtds"] = dict(sorted(f["qtds"].items())[-14:])
+    return alertas
+
+
+def verifica_dominios_semanal(saude):
+    """Uma vez por semana consulta o Registro.br (RDAP): dominio vencido ou titular diferente."""
+    alertas, agora = {}, HOJE.isoformat()
+    ultimo = saude.get("rdap_data", "")
+    if ultimo and (HOJE - datetime.date.fromisoformat(ultimo)).days < 7:
+        return saude.get("rdap_alertas", {})
+    doms = sorted({dominio_base(u) for _, u, _, _ in FONTES if not host(u).endswith(".gov.br")})
+    for d in doms:
+        if not d.endswith(".br"):
+            continue
+        try:
+            j = json.loads(baixa_texto(f"https://rdap.registro.br/domain/{d}", timeout=30))
+        except Exception as ex:
+            print("RDAP falhou", d, ex)
+            continue
+        titular = ""
+        for e in j.get("entities", []):
+            if "registrant" in e.get("roles", []):
+                titular = next((a[3] for a in e.get("vcardArray", [None, []])[1] if a[0] == "fn"), "")
+        venc = next((e["eventDate"][:10] for e in j.get("events", []) if e.get("eventAction") == "expiration"), "")
+        antes = saude["rdap"].get(d, {})
+        if venc and venc < agora:
+            alertas[d] = f"dominio {d} venceu em {venc}"
+        elif antes.get("titular") and titular and antes["titular"] != titular:
+            alertas[d] = f"dominio {d} mudou de titular ({antes['titular']} -> {titular})"
+        saude["rdap"][d] = {"titular": antes.get("titular") or titular, "vencimento": venc}
+        time.sleep(0.5)
+    saude["rdap_data"], saude["rdap_alertas"] = agora, alertas
+    return alertas
+
 # ---------------------------------------------------------------- pagina
 
-def gera_pagina(eventos, status, n_fenaju, info_dist=""):
+def gera_pagina(eventos, status, n_fenaju, info_dist="", alertas=None):
     def dist(e):
         if e.get("km") is None:
             return "<small>Online</small>" if nome_cidade(e["cidade"]) == "ONLINE" else "<small>?</small>"
@@ -735,6 +872,11 @@ def gera_pagina(eventos, status, n_fenaju, info_dist=""):
                 f'<td>{html.escape(e["nome"])}<br><small>{html.escape(e["obs"])}</small></td>'
                 f'<td><a href="{html.escape(e["link"])}" target="_blank" rel="noopener">{html.escape(host(e["link"]))}</a>'
                 f'<br><small class="{e["ver"]}">{selo} {html.escape(e["ver_txt"])}</small></td></tr>')
+    faixa = ""
+    if alertas:
+        itens = "".join(f"<li><b>{html.escape(n)}</b>: {html.escape(m)}</li>" for n, m in alertas)
+        faixa = ('<div class="faixa"><b>ATENCAO: fontes com problema.</b> Procure o site novo destes leiloeiros '
+                 f'para substituirmos no radar:<ul>{itens}</ul></div>')
     ufs = sorted({e["uf"] for e in eventos if e["uf"]})
     opcoes = "".join(f'<option value="{u}">{u}</option>' for u in ufs)
     fontes = "".join(f'<li>{html.escape(n)}: {"OK" if not s["erro"] else "FALHOU"} ({s["qtd"]} leiloes){" - " + html.escape(s["erro"][:80]) if s["erro"] else ""}</li>'
@@ -757,8 +899,10 @@ th{{background:#1d2330;color:#fff;position:sticky;top:0}} tr.mg td{{background:#
 small{{color:#5b6475}} .ok{{color:#11773a}} .alerta{{color:#b54708;font-weight:600}}
 .wrap{{overflow-x:auto}} select,button{{font-size:15px;padding:4px 8px}}
 button.on{{background:#1d2330;color:#fff}}
+.faixa{{background:#fde8e8;border:2px solid #c81e1e;color:#7a1010;padding:10px 12px;margin:10px 0;border-radius:6px}}
 </style></head><body>
 <h1>Radar de Leiloes de Veiculos</h1>
+{faixa}
 <div><small>Atualizado em {agora.strftime("%d/%m/%Y %H:%M")} (Brasilia, {tipo}) &middot; {HOJE.strftime("%d/%m")} a {LIMITE.strftime("%d/%m")} &middot;
 {len(eventos)} leiloes &middot; base FENAJU: {n_fenaju} leiloeiros</small></div>
 <p>Filtrar UF: <select id="f"><option value="">Todas</option>{opcoes}</select>
@@ -785,7 +929,8 @@ document.getElementById('bd').onclick=function(){{ordena(false)}};
 
 async def main():
     from playwright.async_api import async_playwright
-    eventos, status = [], {}
+    eventos, status, alertas = [], {}, []
+    saude = carrega_saude()
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         dominios, n_fenaju = await carrega_fenaju(browser)
@@ -800,6 +945,10 @@ async def main():
             if not ev and not cap["erro"]:
                 cap["erro"] = "nenhum leilao lido (verificar se o site mudou)" if not cap["texto"] else ""
             status[nome] = {"qtd": len(ev), "erro": cap["erro"]}
+            try:
+                alertas += [(nome, m) for m in avalia_saude(saude, nome, url, cap, len(ev))]
+            except Exception as ex:
+                print("Saude falhou", nome, ex)
             print(nome, len(ev), cap["erro"])
             eventos += ev
         await browser.close()
@@ -813,9 +962,15 @@ async def main():
         unicos.append(e)
     unicos.sort(key=lambda e: (e["data"], e["hora"]))
     info_dist = calcula_distancias(unicos)
+    try:
+        for d, m in verifica_dominios_semanal(saude).items():
+            alertas.append((d, m))
+    except Exception as ex:
+        print("RDAP semanal falhou:", ex)
     out = pathlib.Path("site")
     out.mkdir(exist_ok=True)
-    (out / "index.html").write_text(gera_pagina(unicos, status, n_fenaju, info_dist), encoding="utf-8")
+    (out / "index.html").write_text(gera_pagina(unicos, status, n_fenaju, info_dist, alertas), encoding="utf-8")
+    (out / "saude.json").write_text(json.dumps(saude, ensure_ascii=False, indent=1), encoding="utf-8")
     (out / "leiloes.json").write_text(json.dumps(unicos, ensure_ascii=False, indent=1), encoding="utf-8")
     print("Total:", len(unicos))
 
