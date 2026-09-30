@@ -217,8 +217,16 @@ def p_copart(cap):
             continue
         dt = datetime.date(int(di[:4]), int(di[4:6]), int(di[6:]))
         nome = f"Copart - {s.get('saleName', '')}"
+        # Horario: 'saleTime' (ex.: "120000") ja vem em Brasilia e bate com o calendario do site;
+        # 'startTime' vem em UTC (15:00 = 12:00 de Brasilia). Fallback: startTime - 3 h.
+        st = str(s.get("saleTime") or "")
+        if re.fullmatch(r"\d{6}", st):
+            hora = f"{st[:2]}:{st[2:4]}"
+        else:
+            m = re.fullmatch(r"(\d{1,2}):(\d{2})", s.get("startTime", "") or "")
+            hora = f"{(int(m.group(1)) - 3) % 24:02d}:{m.group(2)}" if m else ""
         out.append(evento(dt, nome, "Copart", "https://www.copart.com.br/", s.get("saleName", "").split(" - ")[0],
-                          acha_uf(s.get("saleName", "")), s.get("startTime", ""),
+                          acha_uf(s.get("saleName", "")), hora,
                           s.get("auctioneerName", "")))
     return out
 
@@ -388,6 +396,50 @@ def p_kleiber(cap):
     return out
 
 
+def slug_texto(s):
+    return re.sub(r"[^a-z0-9]+", "-", sem_acento(s).lower()).strip("-")
+
+
+def p_eleiloes(cap):
+    """E-Leiloes (SP): lista 'Ver todos os leiloes' (tipo, status, titulo, lotes, 'Encerramento em 6 de Outubro')."""
+    base = "https://www.e-leiloes.com.br"
+    links = {}
+    for m in re.finditer(r'href="(/eventos/leilao/\d+/([^"]+))"', cap["html"]):
+        links[slug_texto(html.unescape(m.group(2)))] = base + m.group(1)
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    # horarios dos "Destaques da semana": titulo ... "06/10/2026 · 10h00"
+    horas = {}
+    for i, l in enumerate(linhas):
+        m = re.fullmatch(r"(\d{2}/\d{2}/\d{4})\s*·\s*(\d{1,2})h(\d{2})", l)
+        if m:
+            for j in range(i - 1, max(i - 5, 0), -1):
+                if not re.search(r"LOTES|LEILAO", sem_acento(linhas[j])):
+                    horas[slug_texto(linhas[j])] = f"{int(m.group(2)):02d}:{m.group(3)}"
+                    break
+    out = []
+    for i, l in enumerate(linhas):
+        m = re.fullmatch(r"Encerramento em (\d{1,2}) de ([A-Za-zÀ-ú]+)", l)
+        if not m or i < 4 or sem_acento(m.group(2)) not in MESES:
+            continue
+        status, titulo, lotes = linhas[i - 3], linhas[i - 2], linhas[i - 1]
+        if "ABERTO" not in sem_acento(status):
+            continue
+        if not (eh_veiculo(titulo) or "DETRAN" in sem_acento(titulo)):
+            continue
+        try:
+            dt = datetime.date(HOJE.year, MESES[sem_acento(m.group(2))], int(m.group(1)))
+        except ValueError:
+            continue
+        if dt < HOJE - datetime.timedelta(days=60):
+            dt = dt.replace(year=HOJE.year + 1)
+        sl = slug_texto(titulo)
+        link = next((u for k, u in links.items() if k == sl or k.startswith(sl) or sl.startswith(k)), base)
+        n = re.match(r"(\d+)", lotes)
+        out.append(evento(dt, f"E-Leiloes - {titulo}", "E-Leiloes", link, "Online", acha_uf(titulo),
+                          horas.get(sl, ""), f"{n.group(1)} lotes; data = encerramento" if n else "data = encerramento"))
+    return out
+
+
 def p_gp(cap):
     """GP Leiloes (BH): API gp-api/index/inicio (agenda), com 1a e 2a praca."""
     out, vistos = [], set()
@@ -453,6 +505,7 @@ FONTES = [
      [{"url": "https://www.gpleiloes.com.br/gp-api/index/inicio/1/60", "post": {"filtro": None}}]),
     ("Leiloes MG (Seplag)", "https://www.leiloes.mg.gov.br/", p_leiloes_mg, []),
     ("Kleiber Leiloes", "https://kleiberleiloes.com.br/", p_kleiber, []),
+    ("E-Leiloes", "https://www.e-leiloes.com.br/", p_eleiloes, []),
 ]
 
 # ---------------------------------------------------------------- coleta

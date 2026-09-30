@@ -2,82 +2,25 @@ import asyncio, json, re, pathlib, gzip
 from playwright.async_api import async_playwright
 
 FONTES = [
-    # Base oficial de leiloeiros
-    "https://www.fenaju.org.br/leiloeiros",
-    "https://www.fenaju.org.br/leiloeiros/983",
-    # Agregadores
-    "https://chaveleilao.com.br/",
-    "https://leiloesdecarro.com.br/",
-    "https://mapadoleilao.com.br/",
-    "https://leiloverso.com.br/",
-    "https://leiloai.com/",
-    "https://autoleilaobr.com.br/",
-    "https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos",
-    "https://agendadeleiloes.com.br/",
-    "https://leiloeirosdobrasil.com.br/",
-    # Orgaos publicos
-    "https://leilao.detran.mg.gov.br/",
-    "https://pcsdetran.rs.gov.br/consulta-calendario-leilao",
-    "https://www25.receita.fazenda.gov.br/sle-sociedade/portal",
-    # Grandes leiloeiros e organizadoras
-    "https://leilo.com.br/agenda",
-    "https://www.freitasleiloeiro.com.br/Leiloes/Agenda",
-    "https://www.sodresantoro.com.br/",
-    "https://www.copart.com.br/",
-    "https://www.vipleiloes.com.br/",
-    "https://loopleiloes.com.br/",
-    "https://www.megaleiloes.com.br/",
-    "https://www.superbid.net/",
-    "https://www.mgl.com.br/agenda/",
-    "https://www.leiloesbrasil.com.br/agenda",
-    "https://www.parquedosleiloes.com.br/",
-    "https://www.joaoemilio.com.br/",
-    # Lista de leiloeiros enviada pelo usuario (Passo 20)
-    "https://joaoemilio.com.br/",
-    "https://www.norteleiloes.com.br/",
-    "https://www.kronleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
-    "https://sampaioleiloes.com.br/home",
-    "https://wrleiloes.com.br/",
-    "https://www.cardosoleiloes.com.br/",
-    "https://www.leiloesfreire.com.br/",
-    "https://www.mgl.com.br/online/1/4/",
-    "https://www.amtleiloes.com.br/",
-    "https://www.aragaoleiloes.com.br/",
-    "https://www.palaciodosleiloes.com.br/site/index.php",
-    "https://saraivaleiloes.com.br/",
-    "https://www.leiloes.mg.gov.br/",
-    "https://www.leiloeiropublico.com.br/",
-    "https://www.gpleiloes.com.br/#/",
-    "https://leiloei.com/felipe-nunes-gomes-teixeira-bignardi",
-    "https://www.universodosleiloes.com.br/",
-    "https://danielgarcialeiloes.com.br/",
-    "https://topleiloes.com.br/home",
-    "https://www.ricoleiloes.com.br/",
-    "https://www.sumareleiloes.com.br/",
-    "https://tulioleiloes.com.br/",
-    "https://www.brunoniewinskileiloes.com.br/",
-    "https://www.lanceja.com.br/",
-    "https://www.e-leiloes.com.br/",
-    "https://kleiberleiloes.com.br/",
-    "https://www.savoyleiloes.com.br/",
+    # Passo 23: paginas de agenda dos proximos lotes e investigacao da plataforma Superbid
+    "https://www.pestanaleiloes.com.br/agenda-de-leiloes",
     "https://www.vincoleiloes.com.br/",
-    "https://www.mafraleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
-    "https://www.monzonleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
-    "https://leilaopublico.paas.pr.gov.br/",
-    "https://www.pestanaleiloes.com.br/",
+    "https://www.vincoleiloes.com.br/leilao.php?idLeilao=483",
+    "https://www.norteleiloes.com.br/leiloes",
+    "https://wrleiloes.com.br/agenda-de-leiloes",
+    "https://www.leiloeiropublico.com.br/Agenda.aspx",
+    "https://tulioleiloes.com.br/agenda",
+    "https://www.savoyleiloes.com.br/agenda",
+    "https://www.sumareleiloes.com.br/leiloes",
+    "https://www.kronleiloes.com.br/",
+    "https://www.kronleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+    "https://www.mafraleiloes.com.br/",
+    "https://www.monzonleiloes.com.br/",
+    "https://www.superbid.net/",
 ]
 
-# Dominios a verificar (anti-golpe): cadastro FENAJU e data de registro do dominio
-VERIFICAR = [
-    "norteleiloes.com.br", "kronleiloes.com.br", "sampaioleiloes.com.br", "joaoemilio.com.br",
-    "wrleiloes.com.br", "parquedosleiloes.com.br", "cardosoleiloes.com.br", "leiloesfreire.com.br",
-    "mgl.com.br", "amtleiloes.com.br", "aragaoleiloes.com.br", "palaciodosleiloes.com.br",
-    "saraivaleiloes.com.br", "leiloeiropublico.com.br", "gpleiloes.com.br", "leiloei.com",
-    "universodosleiloes.com.br", "danielgarcialeiloes.com.br", "topleiloes.com.br", "ricoleiloes.com.br",
-    "sumareleiloes.com.br", "tulioleiloes.com.br", "brunoniewinskileiloes.com.br", "lanceja.com.br",
-    "e-leiloes.com.br", "kleiberleiloes.com.br", "savoyleiloes.com.br", "vincoleiloes.com.br",
-    "mafraleiloes.com.br", "monzonleiloes.com.br", "pestanaleiloes.com.br", "copart.com.br",
-]
+# Verificacao de dominios ja feita no Passo 20 (lista vazia = nao repetir)
+VERIFICAR = []
 
 OUT = pathlib.Path("snapshots")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -114,7 +57,15 @@ async def captura(browser, url, sem):
             except Exception:
                 pass
 
+        rede = []
+
+        def on_any(r):
+            if len(rede) < 400:
+                rede.append({"url": r.url[:500], "status": r.status, "metodo": r.request.method,
+                             "tipo": r.headers.get("content-type", "")[:60]})
+
         page.on("response", on_resp)
+        page.on("response", on_any)
         info = {"url": url}
         try:
             resp = await page.goto(url, wait_until="domcontentloaded", timeout=60000)
@@ -124,6 +75,9 @@ async def captura(browser, url, sem):
             except Exception:
                 pass
             await page.wait_for_timeout(4000)
+            for _ in range(5):  # rola a pagina para carregar listas preguicosas
+                await page.mouse.wheel(0, 4000)
+                await page.wait_for_timeout(1500)
             info["url_final"] = page.url
             info["titulo"] = await page.title()
             html = await page.content()
@@ -139,6 +93,7 @@ async def captura(browser, url, sem):
         await page.wait_for_timeout(500)
         info["apis_capturadas"] = len(apis)
         grava_gz(d / "apis.json", json.dumps(apis, ensure_ascii=False, indent=1))
+        grava_gz(d / "rede.json", json.dumps(rede, ensure_ascii=False, indent=1))
         (d / "info.json").write_text(json.dumps(info, ensure_ascii=False, indent=1), encoding="utf-8")
         await ctx.close()
         print(info)
@@ -194,7 +149,8 @@ async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         try:
-            await verifica_dominios(browser)
+            if VERIFICAR:
+                await verifica_dominios(browser)
         except Exception as ex:
             print("Verificacao falhou:", ex)
         resultados = await asyncio.gather(*(captura(browser, u, sem) for u in FONTES))
