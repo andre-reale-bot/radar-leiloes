@@ -1009,15 +1009,27 @@ def formata_tempo(seg):
     return f"{m // 60}h{m % 60:02d}"
 
 
-def calcula_distancias(eventos):
-    """Distancia e tempo de carro de BH ate a cidade de cada leilao (OpenStreetMap/OSRM)."""
+def calcula_distancias(eventos, cache=None):
+    """Distancia e tempo de carro de BH ate a cidade de cada leilao (OpenStreetMap/OSRM).
+    'cache' (guardado no saude.json) tem as coordenadas e distancias ja calculadas: se a base de
+    municipios ou o OSRM falharem, o radar usa a ultima copia boa em vez de ficar sem distancia."""
+    cache = cache if cache is not None else {}
+    c_coord, c_dist = cache.setdefault("coords", {}), cache.setdefault("dist", {})
     for e in eventos:
         e["km"], e["tempo"] = None, ""
+    aviso = ""
     try:
         por_uf, por_nome = carrega_municipios()
     except Exception as ex:
         print("Municipios falhou:", ex)
-        return "base de municipios indisponivel"
+        if not c_coord:
+            return "base de municipios indisponivel"
+        por_uf, por_nome = {}, {}
+        for k, c in c_coord.items():
+            n, uf = k.split("|")
+            por_uf[(n, uf)] = tuple(c)
+            por_nome.setdefault(n, []).append((uf, tuple(c)))
+        aviso = " (base de municipios indisponivel: usada copia salva)"
     origem = por_uf.get(ORIGEM)
     if not origem:
         return "origem (BH) nao encontrada na base"
@@ -1026,8 +1038,13 @@ def calcula_distancias(eventos):
         c, _ = acha_coord(e, por_uf, por_nome)
         if c:
             destinos.setdefault(c, []).append(e)
+    # guarda as coordenadas usadas (inclui BH) para a copia de seguranca
+    inv = {c: k for k, c in por_uf.items()}
+    for c in [origem] + list(destinos):
+        if c in inv:
+            c_coord[f"{inv[c][0]}|{inv[c][1]}"] = list(c)
     lista = list(destinos)
-    falhas = 0
+    falhas, de_copia = 0, 0
     for i in range(0, len(lista), 80):
         lote = lista[i:i + 80]
         coords = ";".join(f"{lon:.5f},{lat:.5f}" for lon, lat in [origem] + lote)
@@ -1039,15 +1056,23 @@ def calcula_distancias(eventos):
                 dist, dur = d["distances"][0][j], d["durations"][0][j]
                 if dist is None or dur is None:
                     continue
+                c_dist[f"{c[0]:.5f},{c[1]:.5f}"] = [dist, dur]
                 for e in destinos[c]:
                     e["km"], e["tempo"] = int(round(dist / 1000)), formata_tempo(dur)
         except Exception as ex:
             falhas += 1
             print("OSRM falhou:", ex)
+            for c in lote:  # usa a ultima distancia boa desta cidade, se houver
+                salvo = c_dist.get(f"{c[0]:.5f},{c[1]:.5f}")
+                if salvo:
+                    de_copia += 1
+                    for e in destinos[c]:
+                        e["km"], e["tempo"] = int(round(salvo[0] / 1000)), formata_tempo(salvo[1])
         time.sleep(1.2)
     com = sum(1 for e in eventos if e["km"] is not None)
     print("Distancias:", com, "de", len(eventos), "leiloes")
-    return f"{com} de {len(eventos)} leiloes com distancia" + (" (OSRM falhou em parte)" if falhas else "")
+    return (f"{com} de {len(eventos)} leiloes com distancia" + aviso
+            + (f" (OSRM falhou em parte; {de_copia} cidades pela copia salva)" if falhas else ""))
 
 # ---------------------------------------------------------------- saude das fontes (contingencia)
 
@@ -1071,7 +1096,7 @@ def carrega_saude():
         return {"fontes": {}, "rdap": {}}
 
 
-def avalia_saude(saude, nome, url, cap, qtd):
+def avalia_saude(saude, nome, url, cap, qtd, eventos=()):
     """Atualiza o historico da fonte e devolve a lista de alertas dela."""
     hoje = HOJE.isoformat()
     f = saude["fontes"].setdefault(nome, {"qtds": {}, "falha_desde": None})
@@ -1089,6 +1114,15 @@ def avalia_saude(saude, nome, url, cap, qtd):
     anteriores = [v for d, v in sorted(f["qtds"].items()) if d < hoje][-7:]
     if not falhou and qtd == 0 and len(anteriores) >= 2 and sorted(anteriores)[len(anteriores) // 2] >= 1:
         alertas.append("nenhum leilao lido hoje, mas a fonte costuma ter; o site pode ter mudado de layout")
+    if len(anteriores) >= 3:
+        mediana = sorted(anteriores)[len(anteriores) // 2]
+        if mediana >= 2 and qtd > 3 * mediana:
+            alertas.append(f"leu {qtd} leiloes, bem acima do normal (cerca de {mediana}); o leitor pode estar lendo errado")
+    estranhos = [e for e in eventos if re.fullmatch(r"\d{2}:\d{2}", e.get("hora") or "")
+                 and not (6 <= int(e["hora"][:2]) <= 22)]
+    if estranhos:
+        alertas.append(f"{len(estranhos)} leilao(oes) com horario fora do comum (ex.: {estranhos[0]['hora']}); "
+                       "confira se o fuso ou o leitor mudaram")
     if not falhou:
         f["qtds"][hoje] = qtd
         f["qtds"] = dict(sorted(f["qtds"].items())[-14:])
@@ -1163,6 +1197,7 @@ def gera_pagina(eventos, status, n_fenaju, info_dist="", alertas=None):
     por_dist = sorted(eventos, key=lambda e: (e["km"] if e.get("km") is not None else 999999,
                                               e["data"], e["hora"]))
     agora = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=3)
+    gerado_utc = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     tipo = {"schedule": "execucao automatica", "workflow_dispatch": "execucao manual"}.get(
         os.environ.get("GITHUB_EVENT_NAME", ""), "execucao fora do GitHub")
     return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -1180,6 +1215,7 @@ button.on{{background:#1d2330;color:#fff}}
 .faixa{{background:#fde8e8;border:2px solid #c81e1e;color:#7a1010;padding:10px 12px;margin:10px 0;border-radius:6px}}
 </style></head><body>
 <h1>Radar de Leiloes de Veiculos</h1>
+<div id="velha" class="faixa" style="display:none"></div>
 {faixa}
 <div><small>Atualizado em {agora.strftime("%d/%m/%Y %H:%M")} (Brasilia, {tipo}) &middot; {HOJE.strftime("%d/%m")} a {LIMITE.strftime("%d/%m")} &middot;
 {len(eventos)} leiloes &middot; base FENAJU: {n_fenaju} leiloeiros</small></div>
@@ -1192,6 +1228,10 @@ button.on{{background:#1d2330;color:#fff}}
 <p><small>&#10004; = site conferido (FENAJU, orgao publico ou organizadora conhecida). &#9888; = nao conferido: valide na FENAJU antes de qualquer pagamento. Nunca pague via Pix para pessoa fisica.</small></p>
 <p><small>De BH (carro): distancia e tempo de carro a partir de Belo Horizonte ate a sede do municipio, calculados pelo OpenStreetMap (OSRM), com tempo acrescido de 10%. Sem transito. ? = cidade nao identificada. {html.escape(info_dist)}.</small></p>
 <script>
+(function(){{var gerado=new Date("{gerado_utc}");var h=(Date.now()-gerado.getTime())/36e5;
+if(h>26){{var v=document.getElementById('velha');v.style.display='block';
+v.innerHTML='<b>ATENCAO: esta pagina nao e atualizada ha '+Math.floor(h)+' horas.</b> O robo pode ter parado. '+
+'Abra o GitHub, aba Actions, e veja se a execucao de hoje falhou.';}}}})();
 document.getElementById('f').onchange=function(e){{var v=e.target.value;
 document.querySelectorAll('tr[data-uf]').forEach(function(r){{r.style.display=(!v||r.dataset.uf===v)?'':'none'}})}};
 function ordena(porKm){{var t=document.getElementById('t');
@@ -1207,12 +1247,20 @@ document.getElementById('bd').onclick=function(){{ordena(false)}};
 
 async def main():
     from playwright.async_api import async_playwright
+    inicio = time.time()
     eventos, status, alertas = [], {}, []
     saude = carrega_saude()
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         dominios, n_fenaju = await carrega_fenaju(browser)
         print("FENAJU:", n_fenaju, "leiloeiros,", len(dominios), "dominios")
+        copia = saude.get("fenaju_copia") or {}
+        if len(dominios) < 500 and copia.get("dominios"):  # API fora ou incompleta: usa a ultima lista boa
+            alertas.append(("FENAJU", f"base oficial indisponivel hoje; verificacao feita com a lista salva em "
+                                      f"{copia.get('data')}"))
+            dominios, n_fenaju = copia["dominios"], copia.get("total", n_fenaju)
+        elif len(dominios) >= 500:
+            saude["fenaju_copia"] = {"data": HOJE.isoformat(), "total": n_fenaju, "dominios": dominios}
         for nome, url, parser, extras in FONTES:
             cap = await captura(browser, url, extras)
             try:
@@ -1224,7 +1272,7 @@ async def main():
                 cap["erro"] = "nenhum leilao lido (verificar se o site mudou)" if not cap["texto"] else ""
             status[nome] = {"qtd": len(ev), "erro": cap["erro"]}
             try:
-                alertas += [(nome, m) for m in avalia_saude(saude, nome, url, cap, len(ev))]
+                alertas += [(nome, m) for m in avalia_saude(saude, nome, url, cap, len(ev), ev)]
             except Exception as ex:
                 print("Saude falhou", nome, ex)
             print(nome, len(ev), cap["erro"])
@@ -1239,12 +1287,17 @@ async def main():
         e["ver"], e["ver_txt"] = verifica(e["link"], dominios)
         unicos.append(e)
     unicos.sort(key=lambda e: (e["data"], e["hora"]))
-    info_dist = calcula_distancias(unicos)
+    info_dist = calcula_distancias(unicos, saude.setdefault("cache_distancias", {}))
     try:
         for d, m in verifica_dominios_semanal(saude).items():
             alertas.append((d, m))
     except Exception as ex:
         print("RDAP semanal falhou:", ex)
+    minutos = (time.time() - inicio) / 60
+    print(f"Tempo de execucao: {minutos:.1f} min")
+    if minutos > 40:
+        alertas.append(("Execucao", f"o robo levou {minutos:.0f} min (limite do GitHub: 60 min); "
+                                    "e preciso otimizar antes que pare de rodar"))
     out = pathlib.Path("site")
     out.mkdir(exist_ok=True)
     (out / "index.html").write_text(gera_pagina(unicos, status, n_fenaju, info_dist, alertas), encoding="utf-8")
