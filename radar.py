@@ -42,7 +42,7 @@ def sem_acento(s):
 
 
 def eh_veiculo(texto):
-    t = sem_acento(texto)
+    t = re.sub(r"\bMOTOR(ES)?\b", " ", sem_acento(texto))  # "motores" nao e moto
     if any(p in t for p in PALAVRAS_NAO_VEICULO) and not any(p in t for p in ["VEICUL", "CARRO", "MOTO"]):
         return False
     return any(p in t for p in PALAVRAS_VEICULO)
@@ -264,6 +264,143 @@ def p_parque(cap):
     return out
 
 
+# ---------------------------------------------------------------- leiloeiros de MG (Passo 21)
+
+MESES = {"JANEIRO": 1, "FEVEREIRO": 2, "MARCO": 3, "ABRIL": 4, "MAIO": 5, "JUNHO": 6, "JULHO": 7,
+         "AGOSTO": 8, "SETEMBRO": 9, "OUTUBRO": 10, "NOVEMBRO": 11, "DEZEMBRO": 12}
+PATIOS_PALACIO = {"JUATUBA": "MG", "CAJAMAR": "SP", "SALVADOR": "BA", "EXTERNO": ""}
+
+
+def p_palacio(cap):
+    """Palacio dos Leiloes (Juatuba/MG): secoes '30 de Setembro' + titulo + lotes por patio."""
+    base = "https://www.palaciodosleiloes.com.br/site/index.php"
+    # (qtd de lotes, id do leilao) na ordem em que aparecem no HTML
+    ids = []
+    for m in re.finditer(r"oferece\s*(?:<[^>]+>\s*)*(\d+)\s*(?:<[^>]+>\s*)*lotes", cap["html"]):
+        m2 = re.search(r"leilao_pesquisa=(\d+)", cap["html"][m.end():m.end() + 3000])
+        if m2:
+            ids.append([int(m.group(1)), m2.group(1)])
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    out = []
+    for i, l in enumerate(linhas):
+        m = re.fullmatch(r"(\d{1,2}) de ([A-Za-zÀ-ú]+)", l)
+        if not m or i + 3 >= len(linhas) or sem_acento(m.group(2)) not in MESES:
+            continue
+        mes = MESES[sem_acento(m.group(2))]
+        try:
+            dt = datetime.date(HOJE.year, mes, int(m.group(1)))
+        except ValueError:
+            continue
+        if dt < HOJE - datetime.timedelta(days=60):
+            dt = dt.replace(year=HOJE.year + 1)
+        titulo, resumo = linhas[i + 2], linhas[i + 3]
+        pares = re.findall(r"([^\d]+?)\s+(\d+)", resumo)
+        if not eh_veiculo(titulo + " " + resumo):
+            continue
+        qtd = sum(int(n) for _, n in pares) // 2
+        patios = [(sem_acento(nm).strip(), int(n)) for nm, n in pares if sem_acento(nm).strip() in PATIOS_PALACIO]
+        link = base
+        for par in ids:
+            if par[0] == qtd:
+                link = "https://www.palaciodosleiloes.com.br/site/?leilao_pesquisa=" + par[1]
+                ids.remove(par)
+                break
+        cidade, uf = "", ""
+        reais = [x for x in patios if x[0] != "EXTERNO"]
+        if reais:
+            principal = max(reais, key=lambda x: x[1])[0]
+            cidade, uf = principal.title(), PATIOS_PALACIO[principal]
+        obs = "Lotes por patio: " + ", ".join(f"{nm.title()} {n}" for nm, n in patios) if patios else ""
+        out.append(evento(dt, f"Palacio dos Leiloes - {titulo} ({qtd} lotes)", "Palacio dos Leiloes",
+                          link, cidade, uf, "", obs))
+    return out
+
+
+def p_suporteleiloes(cap, fonte, dominio):
+    """Sites da plataforma Suporte Leiloes (Saraiva, Kleiber): blocos 'COD. 576 / 60/2026'."""
+    links = {m.group(1): m.group(0) for m in re.finditer(r"/eventos/leilao/(\d+)/[^\"'\s]*", cap["html"])}
+    linhas = [l.strip() for l in cap["texto"].splitlines() if l.strip()]
+    idx = [i for i, l in enumerate(linhas) if l.startswith("COD.")]
+    vistos = set()
+    status = {"EM BREVE", "ABERTO PARA LANCES", "ENCERRADO", "FINALIZADO", "EM LOTEAMENTO", "AO VIVO"}
+    out = []
+    for k, i in enumerate(idx):
+        bloco = linhas[i + 1: idx[k + 1] if k + 1 < len(idx) else i + 40]
+        cod = re.match(r"COD\.\s*(\d+)", linhas[i])
+        titulo = next((b for b in bloco if sem_acento(b) not in status), "")
+        if not titulo or not eh_veiculo(titulo):
+            continue
+        n_lotes = re.search(r"(\d+)\s+lotes?", linhas[i])
+        link = dominio + links[cod.group(1)] if cod and cod.group(1) in links else dominio
+        rotulo = "Leilao"
+        for j, b in enumerate(bloco):
+            if re.fullmatch(r"\dº Leil(ão|ao)|Leil(ão|ao)", b):
+                rotulo = b
+            if b == "Data do encerramento" and j + 1 < len(bloco):
+                dt = data_br(bloco[j + 1])
+                hora = bloco[j + 3] if j + 3 < len(bloco) and bloco[j + 2].startswith("A partir") else ""
+                chave = (cod.group(1) if cod else titulo, str(dt), hora)
+                if dt and chave not in vistos:
+                    vistos.add(chave)
+                    out.append(evento(dt, f"{fonte} - {titulo} ({rotulo})", fonte, link,
+                                      "Online" if "ONLINE" in sem_acento(" ".join(bloco)) else "",
+                                      acha_uf(titulo), hora_de(hora),
+                                      f"{n_lotes.group(1)} lotes" if n_lotes else ""))
+    return out
+
+
+def p_saraiva(cap):
+    return p_suporteleiloes(cap, "Saraiva Leiloes", "https://saraivaleiloes.com.br")
+
+
+def p_gp(cap):
+    """GP Leiloes (BH): API gp-api/index/inicio (agenda), com 1a e 2a praca."""
+    out, vistos = [], set()
+    for a in cap["apis"]:
+        if "gp-api/index/inicio" not in a["url"]:
+            continue
+        try:
+            lista = json.loads(a["corpo"]).get("value", {}).get("content", [])
+        except Exception:
+            continue
+        for x in lista:
+            cod = x.get("codigoLeilao")
+            if cod in vistos:
+                continue
+            vistos.add(cod)
+            lote = x.get("lote") or {}
+            texto = " ".join(str(v) for v in (x.get("titulo"), x.get("descricao"), lote.get("resumo")) if v)
+            if not eh_veiculo(texto):
+                continue
+            loc = lote.get("localizacao") or ""
+            cidade = loc.split("/")[0].title() if loc else ("Online" if x.get("tipoDescricao") == "Online" else "")
+            uf = acha_uf(loc) if loc else ""
+            obs = f"{x.get('numeroDeLotes', '')} lotes; comitente: {(x.get('comitente') or '').strip(' -')}"
+            pracas = [(x.get("data"), x.get("hora"), "1a praca")]
+            if x.get("data2"):
+                pracas.append((x.get("data2"), x.get("hora2"), "2a praca"))
+            for d, h, rot in pracas:
+                try:
+                    dt = datetime.date.fromisoformat(d)
+                except (TypeError, ValueError):
+                    continue
+                nome = f"GP Leiloes - {x.get('titulo', '').strip()}" + (f" ({rot})" if len(pracas) > 1 else "")
+                out.append(evento(dt, nome, "GP Leiloes", f"https://www.gpleiloes.com.br/#leilao/{cod}",
+                                  cidade, uf, h or "", obs))
+    return out
+
+
+def p_leiloes_mg(cap):
+    """Portal de leiloes do Governo de MG (Seplag). Sem exemplo real com leilao aberto ainda:
+    se a mensagem de 'nenhum leilao' sumir, gera um aviso para conferir no site."""
+    t = sem_acento(cap["texto"])
+    if not t or "NAO EXISTE NENHUM LEILAO" in t:
+        return []
+    return [evento(HOJE, "Governo de MG (Seplag): ha leiloes publicados, conferir no site", "Leiloes MG (Seplag)",
+                   "https://www.leiloes.mg.gov.br/", "Belo Horizonte", "MG", "",
+                   "Leitor ainda nao conhece o formato; revisar manualmente")]
+
+
 FONTES = [
     ("Detran-MG", "https://leilao.detran.mg.gov.br/", p_detran_mg, []),
     ("Detran-RS", "https://pcsdetran.rs.gov.br/consulta-calendario-leilao", p_detran_rs, []),
@@ -275,6 +412,11 @@ FONTES = [
     ("Freitas Leiloeiro", "https://www.freitasleiloeiro.com.br/Leiloes/Agenda", p_freitas, []),
     ("Leiloes Brasil", "https://www.leiloesbrasil.com.br/agenda", p_leiloesbrasil, []),
     ("Parque dos Leiloes", "https://www.parquedosleiloes.com.br/", p_parque, []),
+    ("Palacio dos Leiloes", "https://www.palaciodosleiloes.com.br/site/index.php", p_palacio, []),
+    ("Saraiva Leiloes", "https://saraivaleiloes.com.br/", p_saraiva, []),
+    ("GP Leiloes", "https://www.gpleiloes.com.br/", p_gp,
+     [{"url": "https://www.gpleiloes.com.br/gp-api/index/inicio/1/60", "post": {"filtro": None}}]),
+    ("Leiloes MG (Seplag)", "https://www.leiloes.mg.gov.br/", p_leiloes_mg, []),
 ]
 
 # ---------------------------------------------------------------- coleta
@@ -305,9 +447,15 @@ async def captura(browser, url, extras):
         cap["texto"] = await page.inner_text("body")
         for e in extras:
             try:
-                r = await page.request.get(e, timeout=30000)
+                if isinstance(e, dict):  # consulta POST (ex.: agenda completa da GP)
+                    r = await page.request.post(e["url"], data=json.dumps(e["post"]),
+                                                headers={"Content-Type": "application/json"}, timeout=30000)
+                    u = e["url"]
+                else:
+                    r = await page.request.get(e, timeout=30000)
+                    u = e
                 if r.ok:
-                    apis.append({"url": e, "corpo": await r.text()})
+                    apis.append({"url": u, "corpo": await r.text()})
             except Exception:
                 pass
     except Exception as ex:
