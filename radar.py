@@ -42,8 +42,13 @@ def sem_acento(s):
     return unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode().upper()
 
 
+# Palavras que contem "MOTO"/"CARRO" mas nao sao veiculos (evita leiloes de equipamentos na lista)
+FALSOS_VEICULO = re.compile(r"\b(MOTOR(ES)?|MOTORISTAS?|MOTOSSERRAS?|MOTOBOMBAS?|MOTONIVELADORAS?|MOTOGERADOR(ES)?|"
+                            r"CARROCERIAS?|CARRINHOS?|CARRETEIS|CARRETEL)\b")
+
+
 def eh_veiculo(texto):
-    t = re.sub(r"\bMOTOR(ES)?\b", " ", sem_acento(texto))  # "motores" nao e moto
+    t = FALSOS_VEICULO.sub(" ", sem_acento(texto))
     if any(p in t for p in PALAVRAS_NAO_VEICULO) and not any(p in t for p in ["VEICUL", "CARRO", "MOTO"]):
         return False
     return any(p in t for p in PALAVRAS_VEICULO)
@@ -1115,7 +1120,8 @@ def verifica_dominios_semanal(saude):
             alertas[d] = f"dominio {d} venceu em {venc}"
         elif antes.get("titular") and titular and antes["titular"] != titular:
             alertas[d] = f"dominio {d} mudou de titular ({antes['titular']} -> {titular})"
-        saude["rdap"][d] = {"titular": antes.get("titular") or titular, "vencimento": venc}
+        # guarda sempre o titular atual: o aviso de troca aparece por uma semana (ate a proxima checagem) e some
+        saude["rdap"][d] = {"titular": titular or antes.get("titular", ""), "vencimento": venc}
         time.sleep(0.5)
     saude["rdap_data"], saude["rdap_alertas"] = agora, alertas
     return alertas
@@ -1156,7 +1162,7 @@ def gera_pagina(eventos, status, n_fenaju, info_dist="", alertas=None):
     # Ordem padrao: mais perto de BH primeiro; sem distancia no fim; empate por data
     por_dist = sorted(eventos, key=lambda e: (e["km"] if e.get("km") is not None else 999999,
                                               e["data"], e["hora"]))
-    agora = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
+    agora = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=3)
     tipo = {"schedule": "execucao automatica", "workflow_dispatch": "execucao manual"}.get(
         os.environ.get("GITHUB_EVENT_NAME", ""), "execucao fora do GitHub")
     return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
@@ -1226,7 +1232,7 @@ async def main():
         await browser.close()
     vistos, unicos = set(), []
     for e in eventos:
-        k = (e["data"], e["hora"], sem_acento(e["nome"])[:60], e["cidade"])
+        k = (e["data"], e["hora"], sem_acento(e["nome"]), e["cidade"], e["link"])
         if k in vistos:
             continue
         vistos.add(k)
