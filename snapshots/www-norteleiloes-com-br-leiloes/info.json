@@ -1,0 +1,7 @@
+{
+ "url": "https://www.norteleiloes.com.br/leiloes",
+ "status": 200,
+ "url_final": "https://www.norteleiloes.com.br/leiloes?pagina=1",
+ "titulo": "Lista de leilões",
+ "apis_capturadas": 3
+}

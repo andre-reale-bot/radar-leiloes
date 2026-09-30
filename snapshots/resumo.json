@@ -1,372 +1,10 @@
 [
  {
-  "url": "https://www.fenaju.org.br/leiloeiros",
+  "url": "https://www.pestanaleiloes.com.br/agenda-de-leiloes",
   "status": 200,
-  "url_final": "https://www.fenaju.org.br/leiloeiros",
-  "titulo": "FENAJU - Federação Nacional das Juntas Comerciais",
-  "apis_capturadas": 2
- },
- {
-  "url": "https://www.fenaju.org.br/leiloeiros/983",
-  "status": 200,
-  "url_final": "https://www.fenaju.org.br/leiloeiros/983",
-  "titulo": "FENAJU - Federação Nacional das Juntas Comerciais",
-  "apis_capturadas": 1
- },
- {
-  "url": "https://chaveleilao.com.br/",
-  "status": 200,
-  "url_final": "https://chaveleilao.com.br/",
-  "titulo": "ChaveLeilão — Todos os leilões do Brasil em um só lugar",
-  "apis_capturadas": 1
- },
- {
-  "url": "https://leiloesdecarro.com.br/",
-  "status": 200,
-  "url_final": "https://leiloesdecarro.com.br/",
-  "titulo": "Leilão de Veículos — O Maior Portal de Leilões de Carros do Brasil | Carro do Bairro Leilões",
-  "apis_capturadas": 5
- },
- {
-  "url": "https://mapadoleilao.com.br/",
-  "status": 200,
-  "url_final": "https://mapadoleilao.com.br/",
-  "titulo": "Mapa do Leilão | Leilões e Vendas Diretas de Imóveis e Veículos Verificados",
-  "apis_capturadas": 1
- },
- {
-  "url": "https://leiloverso.com.br/",
-  "status": 200,
-  "url_final": "https://leiloverso.com.br/",
-  "titulo": "Leiloverso — Todos os leilões do Brasil em um único lugar",
-  "apis_capturadas": 4
- },
- {
-  "url": "https://leiloai.com/",
-  "status": 200,
-  "url_final": "https://leiloai.com/",
-  "titulo": "LeilôAI, o maior agregador de leilões do Brasil",
-  "apis_capturadas": 9
- },
- {
-  "url": "https://autoleilaobr.com.br/",
-  "status": 530,
-  "url_final": "https://autoleilaobr.com.br/",
-  "titulo": "Cloudflare Tunnel error | autoleilaobr.com.br | Cloudflare",
-  "apis_capturadas": 3
- },
- {
-  "url": "https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos",
-  "erro": "Error('Page.goto: net::ERR_CONNECTION_CLOSED at https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos\\nCall log:\\n  - navigating to \"https://www.almanaquedoleilao.com.br/calendario-de-leiloes-de-veiculos\", waiting until \"domcontentloaded\"\\n')",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://agendadeleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://agendadeleiloes.com.br/",
-  "titulo": "Agenda de Leilões – Agenda de leilões de carro, moto, caminhão e caminhonte",
-  "apis_capturadas": 3
- },
- {
-  "url": "https://leiloeirosdobrasil.com.br/",
-  "status": 200,
-  "url_final": "https://leiloeirosdobrasil.com.br/",
-  "titulo": "Leiloeiros do Brasil – Revista on line de leilões oficiais",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://leilao.detran.mg.gov.br/",
-  "status": 200,
-  "url_final": "https://leilao.detran.mg.gov.br/",
-  "titulo": "LEILÃO-DETRAN/MG",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://pcsdetran.rs.gov.br/consulta-calendario-leilao",
-  "status": 200,
-  "url_final": "https://pcsdetran.rs.gov.br/consulta-calendario-leilao",
-  "titulo": "Central Serviços DetranRS",
-  "apis_capturadas": 10
- },
- {
-  "url": "https://www25.receita.fazenda.gov.br/sle-sociedade/portal",
-  "status": 200,
-  "url_final": "https://www25.receita.fazenda.gov.br/sle-sociedade/portal",
-  "titulo": "Sistema Leilão Eletrônico",
-  "apis_capturadas": 1
- },
- {
-  "url": "https://leilo.com.br/agenda",
-  "status": 200,
-  "url_final": "https://leilo.com.br/agenda",
-  "titulo": "Agenda de Leilões — Datas, Horários e Locais | Leilo",
-  "apis_capturadas": 17
- },
- {
-  "url": "https://www.freitasleiloeiro.com.br/Leiloes/Agenda",
-  "status": 200,
-  "url_final": "https://www.freitasleiloeiro.com.br/Leiloes/Agenda",
-  "titulo": "Agenda | Freitas Leiloeiro - Site Oficial",
-  "apis_capturadas": 5
- },
- {
-  "url": "https://www.sodresantoro.com.br/",
-  "status": 200,
-  "url_final": "https://www.sodresantoro.com.br/",
-  "titulo": "Sodre Santoro | Site Oficial: Leiloes de Veiculos e Leiloes Online",
-  "apis_capturadas": 19
- },
- {
-  "url": "https://www.copart.com.br/",
-  "status": 200,
-  "url_final": "https://www.copart.com.br/",
-  "titulo": "Leilōes de Veículos Copart Brasil - Carros à Venda",
-  "apis_capturadas": 33
- },
- {
-  "url": "https://www.vipleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.vipleiloes.com.br/",
-  "titulo": "Leilões de Veículos e Leilões Online | Vip Leilões",
-  "apis_capturadas": 19
- },
- {
-  "url": "https://loopleiloes.com.br/",
-  "status": 429,
-  "url_final": "https://loopleiloes.com.br/",
-  "titulo": "Vercel Security Checkpoint",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.megaleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.megaleiloes.com.br/",
-  "titulo": "Leilões Judiciais e Extrajudiciais Online | Mega Leilões",
-  "apis_capturadas": 3
- },
- {
-  "url": "https://www.superbid.net/",
-  "status": 403,
-  "url_final": "https://www.superbid.net/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.mgl.com.br/agenda/",
-  "status": 403,
-  "url_final": "https://www.mgl.com.br/agenda/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.leiloesbrasil.com.br/agenda",
-  "status": 200,
-  "url_final": "https://www.leiloesbrasil.com.br/agenda",
-  "titulo": "Agenda de leilões em todo Brasil",
-  "apis_capturadas": 1
- },
- {
-  "url": "https://www.parquedosleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.parquedosleiloes.com.br/",
-  "titulo": "Parque dos Leilões",
-  "apis_capturadas": 2
- },
- {
-  "url": "https://www.joaoemilio.com.br/",
-  "status": 403,
-  "url_final": "https://www.joaoemilio.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://joaoemilio.com.br/",
-  "status": 403,
-  "url_final": "https://joaoemilio.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.norteleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.norteleiloes.com.br/",
-  "titulo": "Norte Leilões",
-  "apis_capturadas": 10
- },
- {
-  "url": "https://www.kronleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
-  "status": 200,
-  "url_final": "https://www.kronleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
-  "titulo": "",
-  "apis_capturadas": 3
- },
- {
-  "url": "https://sampaioleiloes.com.br/home",
-  "status": 200,
-  "url_final": "https://sampaioleiloes.com.br/home",
-  "titulo": "Sampaio Leilões",
-  "apis_capturadas": 8
- },
- {
-  "url": "https://wrleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://wrleiloes.com.br/",
-  "titulo": "WR Leilões - leilões online, presencial e simultâneos de veículos, imóveis, industrial, agrícola, bens de consumo...",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.cardosoleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.cardosoleiloes.com.br/",
-  "titulo": "Leilões Judiciais e Extrajudiciais, Online e Presenciais",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.leiloesfreire.com.br/",
-  "status": 200,
-  "url_final": "https://www.leiloesfreire.com.br/",
-  "titulo": "Leilões Freire",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.mgl.com.br/online/1/4/",
-  "status": 403,
-  "url_final": "https://www.mgl.com.br/online/1/4/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.amtleiloes.com.br/",
-  "status": 403,
-  "url_final": "https://www.amtleiloes.com.br/",
-  "titulo": "Attention Required! | Cloudflare",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.aragaoleiloes.com.br/",
-  "status": 403,
-  "url_final": "https://www.aragaoleiloes.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.palaciodosleiloes.com.br/site/index.php",
-  "status": 200,
-  "url_final": "https://www.palaciodosleiloes.com.br/site/index.php",
-  "titulo": "Palácio dos Leilões",
-  "apis_capturadas": 1
- },
- {
-  "url": "https://saraivaleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://saraivaleiloes.com.br/",
-  "titulo": "Saraiva Leilões",
-  "apis_capturadas": 5
- },
- {
-  "url": "https://www.leiloes.mg.gov.br/",
-  "status": 200,
-  "url_final": "https://www.leiloes.mg.gov.br/",
-  "titulo": "Sistema Eletrônico de Leilões",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.leiloeiropublico.com.br/",
-  "status": 200,
-  "url_final": "https://www.leiloeiropublico.com.br/",
-  "titulo": "Leiloeiro Público: Plataforma de Vendas Públicas Rodolfo Schöntag",
-  "apis_capturadas": 39
- },
- {
-  "url": "https://www.gpleiloes.com.br/#/",
-  "status": 200,
-  "url_final": "https://www.gpleiloes.com.br/#/",
-  "titulo": "GP Leilões",
-  "apis_capturadas": 13
- },
- {
-  "url": "https://leiloei.com/felipe-nunes-gomes-teixeira-bignardi",
-  "status": 403,
-  "url_final": "https://leiloei.com/felipe-nunes-gomes-teixeira-bignardi",
-  "titulo": "403 Forbidden",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.universodosleiloes.com.br/",
-  "status": 403,
-  "url_final": "https://www.universodosleiloes.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://danielgarcialeiloes.com.br/",
-  "status": 403,
-  "url_final": "https://danielgarcialeiloes.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://topleiloes.com.br/home",
-  "status": 200,
-  "url_final": "https://topleiloes.com.br/home",
-  "titulo": "Pizzolatti Leilões",
-  "apis_capturadas": 9
- },
- {
-  "url": "https://www.ricoleiloes.com.br/",
-  "status": 403,
-  "url_final": "https://www.ricoleiloes.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.sumareleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.sumareleiloes.com.br/",
-  "titulo": "Sumaré Leilões",
-  "apis_capturadas": 1
- },
- {
-  "url": "https://tulioleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://tulioleiloes.com.br/",
-  "titulo": "MARCOS TULIO LEILÕES",
-  "apis_capturadas": 3
- },
- {
-  "url": "https://www.brunoniewinskileiloes.com.br/",
-  "status": 403,
-  "url_final": "https://www.brunoniewinskileiloes.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.lanceja.com.br/",
-  "status": 403,
-  "url_final": "https://www.lanceja.com.br/",
-  "titulo": "Um momento…",
-  "apis_capturadas": 0
- },
- {
-  "url": "https://www.e-leiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.e-leiloes.com.br/",
-  "titulo": "E-Leilões | Leilão Online de Imóveis, Veículos e Máquinas",
-  "apis_capturadas": 8
- },
- {
-  "url": "https://kleiberleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://kleiberleiloes.com.br/",
-  "titulo": "Kleiber Leilões",
-  "apis_capturadas": 2
- },
- {
-  "url": "https://www.savoyleiloes.com.br/",
-  "status": 200,
-  "url_final": "https://www.savoyleiloes.com.br/",
-  "titulo": "Savoy Leilões",
-  "apis_capturadas": 20
+  "url_final": "https://www.pestanaleiloes.com.br/agenda-de-leiloes",
+  "titulo": "Agenda de Leilões: confira cada leilão | Leilão de Veículos, Imóveis e Bens - Pestana Leilões",
+  "apis_capturadas": 23
  },
  {
   "url": "https://www.vincoleiloes.com.br/",
@@ -376,29 +14,87 @@
   "apis_capturadas": 4
  },
  {
-  "url": "https://www.mafraleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+  "url": "https://www.vincoleiloes.com.br/leilao.php?idLeilao=483",
   "status": 200,
-  "url_final": "https://www.mafraleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
-  "titulo": "",
+  "url_final": "https://www.vincoleiloes.com.br/leilao.php?idLeilao=483",
+  "titulo": "Vinco Leilões ® | Leilões Judiciais e Extrajudiciais",
+  "apis_capturadas": 4
+ },
+ {
+  "url": "https://www.norteleiloes.com.br/leiloes",
+  "status": 200,
+  "url_final": "https://www.norteleiloes.com.br/leiloes?pagina=1",
+  "titulo": "Lista de leilões",
   "apis_capturadas": 3
  },
  {
-  "url": "https://www.monzonleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+  "url": "https://wrleiloes.com.br/agenda-de-leiloes",
   "status": 200,
-  "url_final": "https://www.monzonleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
-  "titulo": "",
-  "apis_capturadas": 3
- },
- {
-  "url": "https://leilaopublico.paas.pr.gov.br/",
-  "erro": "TimeoutError('Page.goto: Timeout 60000ms exceeded.\\nCall log:\\n  - navigating to \"https://leilaopublico.paas.pr.gov.br/\", waiting until \"domcontentloaded\"\\n')",
+  "url_final": "https://wrleiloes.com.br/agenda-de-leiloes",
+  "titulo": "Agenda de leilões | WR Leilões - leilões online, presencial e simultâneos de veículos, imóveis, industrial, agrícola, bens de consumo...",
   "apis_capturadas": 0
  },
  {
-  "url": "https://www.pestanaleiloes.com.br/",
+  "url": "https://www.leiloeiropublico.com.br/Agenda.aspx",
   "status": 200,
-  "url_final": "https://www.pestanaleiloes.com.br/",
-  "titulo": "Leilão de Veículos, Imóveis e Bens - Pestana Leilões",
-  "apis_capturadas": 27
+  "url_final": "https://www.leiloeiropublico.com.br/Agenda.aspx",
+  "titulo": "Leiloeiro Público: Plataforma de Vendas Públicas Rodolfo Schöntag",
+  "apis_capturadas": 39
+ },
+ {
+  "url": "https://tulioleiloes.com.br/agenda",
+  "status": 200,
+  "url_final": "https://tulioleiloes.com.br/agenda",
+  "titulo": "Agenda de leilões",
+  "apis_capturadas": 3
+ },
+ {
+  "url": "https://www.savoyleiloes.com.br/agenda",
+  "status": 200,
+  "url_final": "https://www.savoyleiloes.com.br/agenda",
+  "titulo": "Agenda de Leilões - Savoy Leilões",
+  "apis_capturadas": 11
+ },
+ {
+  "url": "https://www.sumareleiloes.com.br/leiloes",
+  "status": 404,
+  "url_final": "https://www.sumareleiloes.com.br/leiloes",
+  "titulo": "Página não encontrada",
+  "apis_capturadas": 0
+ },
+ {
+  "url": "https://www.kronleiloes.com.br/",
+  "status": 200,
+  "url_final": "https://www.kronleiloes.com.br/",
+  "titulo": "",
+  "apis_capturadas": 3
+ },
+ {
+  "url": "https://www.kronleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+  "status": 200,
+  "url_final": "https://www.kronleiloes.com.br/?searchType=opened&preOrderBy=orderByFirstOpenedOffers&pageNumber=1&pageSize=30&orderBy=endDate:asc",
+  "titulo": "",
+  "apis_capturadas": 3
+ },
+ {
+  "url": "https://www.mafraleiloes.com.br/",
+  "status": 200,
+  "url_final": "https://www.mafraleiloes.com.br/",
+  "titulo": "",
+  "apis_capturadas": 3
+ },
+ {
+  "url": "https://www.monzonleiloes.com.br/",
+  "status": 200,
+  "url_final": "https://www.monzonleiloes.com.br/",
+  "titulo": "",
+  "apis_capturadas": 3
+ },
+ {
+  "url": "https://www.superbid.net/",
+  "status": 403,
+  "url_final": "https://www.superbid.net/",
+  "titulo": "Um momento…",
+  "apis_capturadas": 0
  }
 ]
